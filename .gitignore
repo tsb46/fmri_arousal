@@ -130,7 +130,15 @@ dmypy.json
 .pyre/
 
 # Data and result folders
-/data
+data/dataset_chang/*/
+data/dataset_yale/*/
+data/dataset_choe/*/
+data/dataset_nki/*/
+data/dataset_gu/*/
+
+
+
+
 /results
 
 
