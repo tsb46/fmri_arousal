@@ -1,99 +1,71 @@
-from PyEMD import CEEMDAN
-from scipy.signal import butter, sosfiltfilt, sosfreqz
+import numpy as np
+
+from utils.butterworth_filters import butterworth_filter
+from scipy.interpolate import interp1d
+from scipy.signal import find_peaks_cwt
 from scipy.stats import zscore
 
 
-def butter_bandpass(lowcut, highcut, fs, order=5):
-	nyq = 0.5 * fs
-	low = lowcut / nyq
-	high = highcut / nyq
-	sos = butter(order, [low, high], analog=False, btype='band', output='sos')
-	return sos
+def filter_physio(signal, filter_type, lowcut, highcut, fs):
+	if filter_type =='raw':
+		return signal
+	else:
+		signal_filt = butterworth_filter(signal, lowcut, highcut, fs, filter_type)
+		return signal_filt
 
 
-def butter_highpass(cutoff, fs, order=5):
-	nyq = 0.5 * fs
-	high = cutoff / nyq
-	sos = signal.butter(order, high, analog=False, btype='high', output='sos')
-	return sos
-
-
-def butter_lowpass(cutoff, fs, order=5):
-	nyq = 0.5 * fs
-	low = cutoff / nyq
-	sos = butter(order, low, analog=False, btype='low', output='sos')
-	return sos
-
-
-def ensemble_emd(signal, max_imf, trials, parallel, processes):
-	if ~parallel:
-		processes = None
-	ceemd = CEEMDAN(trials, parallel=parallel, processes=processes)
-	imfs = ceemd(signal[:,0], max_imf=max_imf)
-	return imfs
-
-
-def filter_physio(filter_type, signal, lowcut, highcut, fs, 
-                  order=5, ceemd_params=None):
-	non_emd = ['bandpass', 'highpass', 'lowpass']
-	if filter_type in non_emd:
-		if filter_type == 'bandpass':
-			sos = butter_bandpass(lowcut, highcut, fs, order=order)
-		elif filter_type == 'lowpass':
-			sos = butter_lowpass(lowcut, fs, order=order)
-		elif filter_type == 'highpass':
-			sos = butter_highpass(highcut, fs, order=order)
-		# Use filtfilt to avoid phase delay
-		data_filt = sosfiltfilt(sos, signal, axis=0)
-	elif filter_type == 'ceemd':
-		data_filt = ensemble_emd(signal, ceemd_params['max_imf'], 
-		                         ceemd_params['trials'], ceemd_params['parallel'],
-		                         ceemd_params['processes'])
-	return data_filt
-
-
-def preprocess_physio(eeg, rv, hr, physio_params):
+def preprocess_physio(physio_sig, params):
 	# Define sampling rate
-	fs = 1/physio_params['tr']
+	fs = 1/params['tr']
 	# Select filter params
-	if physio_params['filter_choice'] == 'ceemd':
-		ceemd_params = select_params(physio_params)
-		highcut = None 
+	lowcut, highcut = select_filter_params(physio_params['physio'])
+	if physio_params['despike']:
+		physio_sig = wavelet_despike(signal, 
+		                             params['physio']['despike_params']['widths'],
+		                             params['physio']['despike_params']['min_snr'],
+		                             params['physio']['despike_params']['noise_perc'], 
+		                             params['physio']['despike_params']['window_size'], 
+		                             params['physio']['despike_params']['interpolation_window'])
+	physio_sig_proc = filter_physio(physio_sig, params['physio']['filter_choice'],
+			                       lowcut, highcut, fs)
+	return physio_sig_proc
+
+
+def select_filter_params(physio_params):
+	if physio_params['filter_choice'] == 'raw':
 		lowcut = None
-	elif physio_params['filter_choice'] in ['bandpass', 'lowpass', 'highpass']:
-		lowcut, highcut = select_params(physio_params)
-		ceemd_params = None
-	elif physio_params['filter_choice'] == 'raw':
-		return [eeg, rv, hr]
-		
-	# Filter signals
-	proc_signal = []
-	for signal in [eeg, rv, hr]:
-		tmp_signal = filter_physio(physio_params['filter_choice'], signal, 
-								   lowcut, highcut, fs, ceemd_params=ceemd_params)
-		proc_signal.append(zscore(tmp_signal))
-	return proc_signal
-
-
-def select_params(physio_params):
-	if physio_params['filter_choice'] != 'ceemd':
+		highcut = None
+	else:
 		if physio_params['filter_choice'] == 'bandpass':
 			lowcut = physio_params['filter_params']['bandpass']['low']
 			highcut = physio_params['filter_params']['bandpass']['high']
 		elif physio_params['filter_choice'] == 'lowpass':
-			lowcut = physio_params['filter_params']['lowpass']['low']
-			highcut = None
-		elif physio_params['filter_choice'] == 'highpass':
+			highcut = physio_params['filter_params']['lowpass']['high']
 			lowcut = None
-			highcut = physio_params['filter_params']['highpass']['high']
-		return lowcut, highcut
-	elif physio_params['filter_choice'] == 'ceemd':
-		ceemd_params = {
-			'max_imf': physio_params['filter_params']['ceemd']['max_imf'],
-			'trials': physio_params['filter_params']['ceemd']['trials'],
-			'parallel': physio_params['filter_params']['ceemd']['parallel'],
-			"processes": physio_params['filter_params']['ceemd']['processes']
-		}
-		return ceemd_params
+		elif physio_params['filter_choice'] == 'highpass':
+			highcut = None
+			lowcut = physio_params['filter_params']['highpass']['low']
+	return lowcut, highcut
+
+
+def wavelet_despike(signal, widths, min_snr, noise_perc, window_size, 
+                    interp_window, end_pad=20):
+    l_w, r_w = interp_window
+    signal_z = signal[:,0].copy()
+    peaks = find_peaks_cwt(np.abs(signal_z), widths=widths, min_snr=min_snr, 
+                           noise_perc=noise_perc, window_size=window_size)
+    if len(peaks) > 0:
+        for peak in peaks:
+            if peak in range(end_pad,len(signal)-end_pad):
+                peak_idx = (peak-(l_w+1), peak+(r_w))
+                signal_z[peak_idx[0]:peak_idx[1]] = np.NaN
+        not_nan = np.logical_not(np.isnan(signal_z))
+        indices = np.arange(len(signal_z))
+        interp = interp1d(indices[not_nan], signal_z[not_nan], fill_value="extrapolate")
+        signal_despiked = interp(indices)
+        return signal_despiked
+    return signal_z
+
+
 
 

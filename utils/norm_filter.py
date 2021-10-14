@@ -3,22 +3,8 @@ import nibabel as nb
 import numpy as np
 import os
 
-from scipy.signal import butter, sosfiltfilt, sosfreqz
+from butterworth_filters import butterworth_filter
 from scipy.stats import zscore
-
-def butter_bandpass(lowcut, highcut, fs, order=5):
-    nyq = 0.5 * fs
-    low = lowcut / nyq
-    high = highcut / nyq
-    sos = butter(order, [low, high], analog=False, btype='band', output='sos')
-    return sos
-
-
-def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
-    sos = butter_bandpass(lowcut, highcut, fs, order=order)
-    # Use filtfilt to avoid phase delay
-    data_filt = sosfiltfilt(sos, data, axis=0)
-    return data_filt
 
 
 def convert_2d(mask, nifti_data):
@@ -41,42 +27,59 @@ def output_nifti(output_file, nifti_file, nifti_4d):
     nb.save(nifti_out, output_file)
 
 
-def run_main(nifti_file, mask, low, high, tr, output_file):
+def run_main(file, nifti, mask, cut_high, cut_low, tr, output_file):
     # Get sampling rate
     fs = 1 / tr
-    # Load mask and functional scan
-    nifti = nb.load(nifti_file)
-    nifti_data = nifti.get_fdata()
-    nifti.uncache()
-    mask = nb.load(mask).get_fdata() > 0
-    nifti_data = convert_2d(mask, nifti_data)
+    if nifti:
+        # Load mask and functional scan
+        nifti = nb.load(file)
+        data = nifti.get_fdata()
+        nifti.uncache()
+        mask = nb.load(mask).get_fdata() > 0
+        data = convert_2d(mask, data)
+    else:
+        data = np.loadtxt(file)
     # Demean and norm data
-    nifti_data = zscore(nifti_data)
+    data = zscore(data)
+    # Lowpass filter with Butterworth
+    if cut_low is None:
+        data = butterworth_filter(data, None, cut_high, fs, 'lowpass')
     # Bandpass filter with Butterworth
-    nifti_data = butter_bandpass_filter(nifti_data, low, high, fs)
-    nifti_data_4d = convert_4d(mask, nifti_data)
+    else:
+        data = butterworth_filter(data, cut_low, cut_high, fs, 'bandpass')    
+
     # Write output
-    output_nifti(output_file, nifti, nifti_data_4d)
+    if nifti:
+        nifti_data_4d = convert_4d(mask, data)
+        output_nifti(output_file, nifti, nifti_data_4d)
+    else:
+        np.savetxt(output_file, data)
+
 
 
 if __name__ == '__main__':
-    """Bandpass filter w/ Butterworth Filter """
-    parser = argparse.ArgumentParser(description='Normalize and bandpass filter cifti files')
+    """Temporal filter w/ Butterworth Filter """
+    parser = argparse.ArgumentParser(description='Normalize and temporal filter nifti files')
+    parser.add_argument('-f', '--file_path',
+                        help='<Required> path to file',
+                        required=True,
+                        type=str)
     parser.add_argument('-n', '--nifti',
-                        help='<Required> path to nifti file',
-                        required=True,
-                        type=str)
+                        help='whether file is a nifti file, otherwise signal .txt file',
+                        default=1,
+                        required=False,
+                        type=int)
     parser.add_argument('-m', '--mask',
-                        help='<Required> path to nifti file',
-                        required=True,
+                        help='path to nifti mask file',
+                        required=False,
                         type=str)
-    parser.add_argument('-l', '--low_cut',
-                        help='<Required> Lower bound of the bandpass filter',
+    parser.add_argument('-ch', '--cut_high',
+                        help='<Required> cutoff of the lowpass filter',
                         required=True,
                         type=float)
-    parser.add_argument('-u', '--high_cut',
-                        help='<Required> Higher bound of the bandpass filter',
-                        required=True,
+    parser.add_argument('-cl', '--cut_low',
+                        help='cutoff of the highpass filter',
+                        required=False,
                         type=float)
     parser.add_argument('-t', '--tr',
                         help='the repetition time of the data',
@@ -89,6 +92,6 @@ if __name__ == '__main__':
                         default=os.getcwd(),
                         type=str)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['nifti'], args_dict['mask'],
-             args_dict['low_cut'], args_dict['high_cut'], 
+    run_main(args_dict['file_path'], args_dict['nifti'], args_dict['mask'],
+             args_dict['cut_high'], args_dict['cut_low'], 
              args_dict['tr'], args_dict['output_file'])
