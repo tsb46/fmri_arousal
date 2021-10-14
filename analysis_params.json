@@ -1,0 +1,80 @@
+
+{ "chang": {
+		"tr": 2.1,
+		"physio": ["eeg", "hr", "rv"],
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "bandpass",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"filter_params": {
+					"filter_choice": "bandpass",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					},
+					"despike": 1,
+					"despike_params" : {
+						"widths": 3,
+						"min_snr": 2,
+						"noise_perc": 5,
+						"window_size": 100,
+						"interpolation_window": [2,2]
+					}
+				}
+			}
+		}
+	},
+	"choe": {
+		"tr": 2,
+		"physio": ["egg"],
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"despike": 0,
+					"despike_params" : {
+						"widths": 3,
+						"min_snr": 2,
+						"noise_perc": 5,
+						"window_size": 100,
+						"interpolation_window": [2,2]
+					}
+				}
+			}
+		}
+	}
+}
