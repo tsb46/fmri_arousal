@@ -135,6 +135,9 @@ data/dataset_yale/*/
 data/dataset_choe/*/
 data/dataset_nki/*/
 data/dataset_gu/*/
+data/dataset_hcp/*/
+
+external/*
 
 
 
