@@ -38,22 +38,22 @@ def butterworth_filter(signals, lowcut, highcut, fs, filter_type):
 	return signals
 
 
-def filter_functional_data(func_data, lowcut, highcut, params):
+def filter_functional_data(func_data, params):
 	# Get TR from analysis params
-	tr = physio_params['tr']
+	tr = params['tr']
 	fs = 1/tr 
-	if params['filter_type'] == 'bandpass':
-		lowcut = params['bandpass']['low']
-		highcut = params['bandpass']['high']
-	elif params['filter_type'] == 'lowpass':
+	if params['data']['func']['filter_params']['filter_choice'] == 'bandpass':
+		lowcut = params['data']['func']['filter_params']['bandpass']['low']
+		highcut = params['data']['func']['filter_params']['bandpass']['high']
+	elif params['data']['func']['filter_params']['filter_choice'] == 'lowpass':
 		lowcut = None
-		highcut = params['lowpass']['high']
-	elif params['filter_type'] == 'highpass':
-		lowcut = params['highpass']['low']
+		highcut = params['data']['func']['filter_params']['lowpass']['high']
+	elif params['data']['func']['filter_params']['filter_choice'] == 'highpass':
+		lowcut = params['data']['func']['filter_params']['highpass']['low']
 		highcut = None
-	elif params['filter_type'] == 'raw':
+	elif params['data']['func']['filter_params']['filter_choice'] == 'raw':
 		lowcut = None
 		highcut = None
 	func_data = butterworth_filter(func_data, lowcut, highcut, 
-	                               fs, params['filter_type'])
+	                               fs, params['data']['func']['filter_params']['filter_choice'])
 	return func_data
