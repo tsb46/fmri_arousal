@@ -18,15 +18,15 @@ def preprocess_physio(physio_sig, params):
 	# Define sampling rate
 	fs = 1/params['tr']
 	# Select filter params
-	lowcut, highcut = select_filter_params(physio_params['physio'])
-	if physio_params['despike']:
-		physio_sig = wavelet_despike(signal, 
-		                             params['physio']['despike_params']['widths'],
-		                             params['physio']['despike_params']['min_snr'],
-		                             params['physio']['despike_params']['noise_perc'], 
-		                             params['physio']['despike_params']['window_size'], 
-		                             params['physio']['despike_params']['interpolation_window'])
-	physio_sig_proc = filter_physio(physio_sig, params['physio']['filter_choice'],
+	lowcut, highcut = select_filter_params(params['data']['physio']['filter_params'])
+	if params['data']['physio']['filter_params']['despike']:
+		physio_sig = wavelet_despike(physio_sig, 
+		                             params['data']['physio']['filter_params']['despike_params']['widths'],
+		                             params['data']['physio']['filter_params']['despike_params']['min_snr'],
+		                             params['data']['physio']['filter_params']['despike_params']['noise_perc'], 
+		                             params['data']['physio']['filter_params']['despike_params']['window_size'], 
+		                             params['data']['physio']['filter_params']['despike_params']['interpolation_window'])
+	physio_sig_proc = filter_physio(physio_sig, params['data']['physio']['filter_params']['filter_choice'],
 			                       lowcut, highcut, fs)
 	return physio_sig_proc
 
@@ -37,23 +37,22 @@ def select_filter_params(physio_params):
 		highcut = None
 	else:
 		if physio_params['filter_choice'] == 'bandpass':
-			lowcut = physio_params['filter_params']['bandpass']['low']
-			highcut = physio_params['filter_params']['bandpass']['high']
+			lowcut = physio_params['bandpass']['low']
+			highcut = physio_params['bandpass']['high']
 		elif physio_params['filter_choice'] == 'lowpass':
-			highcut = physio_params['filter_params']['lowpass']['high']
+			highcut = physio_params['lowpass']['high']
 			lowcut = None
 		elif physio_params['filter_choice'] == 'highpass':
 			highcut = None
-			lowcut = physio_params['filter_params']['highpass']['low']
+			lowcut = physio_params['highpass']['low']
 	return lowcut, highcut
 
 
 def wavelet_despike(signal, widths, min_snr, noise_perc, window_size, 
                     interp_window, end_pad=20):
     l_w, r_w = interp_window
-    signal_z = signal[:,0].copy()
-    peaks = find_peaks_cwt(np.abs(signal_z), widths=widths, min_snr=min_snr, 
-                           noise_perc=noise_perc, window_size=window_size)
+    signal_z = signal.copy()
+    peaks = find_peaks_cwt(np.abs(signal_z), widths=widths, min_snr=min_snr, noise_perc=noise_perc, window_size=window_size)
     if len(peaks) > 0:
         for peak in peaks:
             if peak in range(end_pad,len(signal)-end_pad):

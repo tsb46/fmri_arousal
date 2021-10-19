@@ -83,8 +83,7 @@ if __name__ == '__main__':
                         type=float)
     parser.add_argument('-t', '--tr',
                         help='the repetition time of the data',
-                        required=False,
-                        default=2.1,
+                        required=True,
                         type=float)
     parser.add_argument('-o', '--output_file',
                         help='output file path',
