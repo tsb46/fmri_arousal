@@ -14,11 +14,11 @@ def filter_physio(signal, filter_type, lowcut, highcut, fs):
 		return signal_filt
 
 
-def preprocess_physio(physio_sig, params):
+def preprocess_physio(physio_sig, params, physio_label):
 	# Define sampling rate
 	fs = 1/params['tr']
 	# Select filter params
-	lowcut, highcut = select_filter_params(params['data']['physio']['filter_params'])
+	lowcut, highcut = select_filter_params(params['data']['physio']['filter_params'], physio_label)
 	if params['data']['physio']['filter_params']['despike']:
 		physio_sig = wavelet_despike(physio_sig, 
 		                             params['data']['physio']['filter_params']['despike_params']['widths'],
@@ -26,23 +26,23 @@ def preprocess_physio(physio_sig, params):
 		                             params['data']['physio']['filter_params']['despike_params']['noise_perc'], 
 		                             params['data']['physio']['filter_params']['despike_params']['window_size'], 
 		                             params['data']['physio']['filter_params']['despike_params']['interpolation_window'])
-	physio_sig_proc = filter_physio(physio_sig, params['data']['physio']['filter_params']['filter_choice'],
+	physio_sig_proc = filter_physio(physio_sig, params['data']['physio']['filter_params']['filter_choice'][physio_label],
 			                       lowcut, highcut, fs)
 	return physio_sig_proc
 
 
-def select_filter_params(physio_params):
-	if physio_params['filter_choice'] == 'raw':
+def select_filter_params(physio_params, physio_label):
+	if physio_params['filter_choice'][physio_label] == 'raw':
 		lowcut = None
 		highcut = None
 	else:
-		if physio_params['filter_choice'] == 'bandpass':
+		if physio_params['filter_choice'][physio_label] == 'bandpass':
 			lowcut = physio_params['bandpass']['low']
 			highcut = physio_params['bandpass']['high']
-		elif physio_params['filter_choice'] == 'lowpass':
+		elif physio_params['filter_choice'][physio_label] == 'lowpass':
 			highcut = physio_params['lowpass']['high']
 			lowcut = None
-		elif physio_params['filter_choice'] == 'highpass':
+		elif physio_params['filter_choice'][physio_label] == 'highpass':
 			highcut = None
 			lowcut = physio_params['highpass']['low']
 	return lowcut, highcut
