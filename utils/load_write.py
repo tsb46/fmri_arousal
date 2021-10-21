@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 from utils.butterworth_filters import filter_functional_data
-from utils.load_utils import find_fps
+from utils.load_utils import find_fps, print_filter_info
 from utils.physio_preprocess import preprocess_physio
 from scipy.io import loadmat 
 from scipy.stats import zscore
@@ -61,14 +61,20 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, group_
 
 	# Pull file paths
 	fps = find_fps(data, level, physio, params_data, subj_n, scan_n)
+	# Print filter parameters for functional and physio signals
+	print_filter_info(params_data, load_physio)
 	# Pull data for subject level analysis
 	if level == 'subject':
 		print(f'Loading subject: {subj_n}')
 		func_data = load_subject_func(fps['func'][0], mask, params_data)
+		if group_method == 'list':
+			func_data = [func_data]
 		if load_physio:
 			physio_proc = []
 			for p in physio:
 				p_proc = load_subject_physio(fps[p][0], params_data, data, p)
+				if group_method == 'list':
+					p_proc = [p_proc]
 				physio_proc.append(p_proc)
 		else:
 			physio_proc = None
@@ -85,7 +91,7 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, group_
 			physio_proc = None
 
 	func_data, zero_mask, n_vert_orig = filter_zero_voxels(func_data, group_method)
-	return func_data, physio_proc, physio, zero_mask, n_vert_orig
+	return func_data, physio_proc, physio, zero_mask, n_vert_orig, params_data
 	
 
 def load_group_func(fps, mask, params, group_method):
@@ -139,7 +145,7 @@ def load_subject_physio(fp, params, data, physio_label):
 			physio_signal = physio_signal['hr'][:,0]
 	else:
 		physio_signal = np.loadtxt(fp)
-	physio_signal_proc = preprocess_physio(physio_signal, params)
+	physio_signal_proc = preprocess_physio(physio_signal, params, physio_label)
 	return physio_signal_proc
 
 

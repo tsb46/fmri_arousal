@@ -56,7 +56,7 @@ def write_results(dataset, peak_avg, pos_neg, physio_select,
 def run_main(dataset, level, physio, subj_n, scan_n, pos_neg, l_window, r_window, 
              peak_thres, n_samples=100):
 	# Load data
-	func_data, physio_sig, physio_labels, zero_mask, n_vert = load_data(dataset, level, physio=physio, load_physio=True, 
+	func_data, physio_sig, physio_labels, zero_mask, n_vert, _ = load_data(dataset, level, physio=physio, load_physio=True, 
 	                                                                    subj_n=subj_n, scan_n=scan_n) 
 	# Normalize func data
 	func_data = zscore(func_data)
