@@ -58,7 +58,6 @@ def find_fps(data, level, physio, params, subj_n=None, scan=None):
     elif data == 'hcp':
         fps = {d_type: [fp_hcp(d_type, subj_scan[0],subj_scan[1]) for subj_scan in search_terms] 
                for d_type in physio_fp}
-
     return fps
 
 
@@ -130,9 +129,44 @@ def load_subject_list(data):
 
 
 def load_nki_event_file():
-    # We are ASSUMING that the event timings are the same across all subjects (i.e. no counterbalancing)
-    events = pd.read_csv('data/dataset_nki/events/A00057406_task_breathhold_events.tsv')
+    # We are ASSUMING that the event timings are the same across all subjects (e.g. no counterbalancing)
+    events = pd.read_csv('data/dataset_nki/events/A00057406_task_breathhold_events.tsv', sep='\t')
     return events
+
+
+def print_filter_info(params, load_physio):
+    # print filter parameters of functional data
+    if params['data']['func']['filter_params']['filter_choice'] == 'raw':
+        print(f'no filtering applied to functional data \n')
+    else:
+        filter_choice = params['data']['func']['filter_params']['filter_choice'] 
+        if filter_choice == 'bandpass':
+            low = params['data']['func']['filter_params'][filter_choice]['low'] 
+            high = params['data']['func']['filter_params'][filter_choice]['high']
+        elif filter_choice == 'lowpass':
+            low = None
+            high = params['data']['func']['filter_params'][filter_choice]['high']
+        elif filter_choice == 'highpass':
+            low = params['data']['func']['filter_params'][filter_choice]['low']
+            high = None
+        print(f'{filter_choice} filtering applied to functional data: {low} - {high} Hz \n')
+    if load_physio:
+        # print filter parameters for physio signals
+        for p in params['physio']:
+            if params['data']['physio']['filter_params']['filter_choice'][p] == 'raw':
+                print(f'no filtering applied to {p} data \n')
+            else:
+                filter_choice = params['data']['physio']['filter_params']['filter_choice'][p]
+                if filter_choice == 'bandpass':
+                    low = params['data']['physio']['filter_params'][filter_choice]['low'] 
+                    high = params['data']['physio']['filter_params'][filter_choice]['high']
+                elif filter_choice == 'lowpass':
+                    low = None
+                    high = params['data']['physio']['filter_params'][filter_choice]['high']
+                elif filter_choice == 'highpass':
+                    low = params['data']['physio']['filter_params'][filter_choice]['low']
+                    high = None
+                print(f'{filter_choice} filtering applied to {p} data: {low} - {high} Hz \n')
 
 
 def search_physio(data, physio, physio_standard):

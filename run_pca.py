@@ -73,11 +73,10 @@ def write_results(dataset, level, pca_output, pca_type, comp_weights,
 
 
 def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate):
-    func_data, _, _, zero_mask, n_vert = load_data(dataset, level, physio=None, load_physio=False, 
+    func_data, _, _, zero_mask, n_vert, _ = load_data(dataset, level, physio=None, load_physio=False, 
                                                 subj_n=subj_n, scan_n=scan_n)   
     # Normalize data
     func_data = zscore(func_data)
-
     # If specified, center along rows
     if center == 'r':
         func_data -= func_data.mean(axis=1, keepdims=True)
