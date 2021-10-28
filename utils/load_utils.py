@@ -4,14 +4,12 @@ import os
 import pandas as pd
 
 subject_list_chang = 'data/dataset_chang/subject_list_chang.csv'
-subject_list_choe = 'data/dataset_choe/run_list_choe.csv'
-subject_list_gu = 'data/dataset_gu/subject_list_gu_subset.csv'
 subject_list_yale = 'data/dataset_yale/subject_list_yale_subset.csv'
 subject_list_nki = 'data/dataset_nki/subject_list_nki.csv'
 subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_subset.csv'
 
 
-def find_fps(data, level, physio, params, subj_n=None, scan=None):
+def find_fps(data, level, physio, params, events=False, subj_n=None, scan=None):
     subj_list = load_subject_list(data)
     physio_fp = physio.copy()
     if level == 'group':
@@ -40,20 +38,17 @@ def find_fps(data, level, physio, params, subj_n=None, scan=None):
     else:
         physio_fp = ['func']
 
+    if events:
+        physio_fp.insert(0, 'events')
+
     if data == 'chang':
         fps = {d_type: [fp_chang(d_type, subj_scan[0],subj_scan[1]) for subj_scan in search_terms] 
-               for d_type in physio_fp}
-    elif data == 'choe':
-        fps = {d_type: [fp_choe(d_type, run) for run in search_terms] 
                for d_type in physio_fp}
     elif data == 'nki':
         fps = {d_type: [fp_nki(d_type, subj) for subj in search_terms] 
                for d_type in physio_fp}
     elif data == 'yale':
         fps = {d_type: [fp_yale(d_type, subj) for subj in search_terms] 
-               for d_type in physio_fp}
-    elif data == 'gu':
-        fps = {d_type: [fp_gu(d_type, subj) for subj in search_terms] 
                for d_type in physio_fp}
     elif data == 'hcp':
         fps = {d_type: [fp_hcp(d_type, subj_scan[0],subj_scan[1]) for subj_scan in search_terms] 
@@ -78,29 +73,23 @@ def fp_chang(data_type, subj, scan):
     return f_str
 
 
-def fp_choe(data_type, run):
-    if data_type == 'func':
-        f_str = f'data/dataset_choe/func/proc3_filter/pb04.20190{run}jp.r01.blur+tlrc.nii'
-    elif data_type == 'egg':
-        f_str = f'data/dataset_choe/egg/proc2_resample/0{run}_run1_EGG.txt'
-    return f_str
-
-
 def fp_hcp(data_type, subj, scan):
     if data_type == 'func':
         f_str = f'data/dataset_hcp/func/proc3_filter_norm/{subj}_{scan}1_rest.nii.gz'
-    return f_str
-
-
-def fp_gu(data_type, subj):
-    if data_type == 'func':
-        f_str = f'data/dataset_gu/func/proc6_filter_norm/{subj}_task-sleep_run-1_bold.nii.gz'
+    elif data_type == 'rv':
+        f_str = f'data/dataset_hcp/physio/proc1_hr_rv/{subj}_{scan}1_physio_rv.txt'
+    elif data_type == 'hr':
+        f_str = f'data/dataset_hcp/physio/proc1_hr_rv/{subj}_{scan}1_physio_hr.txt'
     return f_str
 
 
 def fp_nki(data_type, subj):
     if data_type == 'func':
         f_str = f'data/dataset_nki/func/proc5_filter_norm/{subj}_task_breathhold.nii.gz'
+    elif data_type == 'hr':
+        f_str = f'data/dataset_nki/physio/proc1_hr_rv/{subj}_task_breathhold_physio_hr.txt'
+    elif data_type == 'rv':
+        f_str = f'data/dataset_nki/physio/proc1_hr_rv/{subj}_task_breathhold_physio_rv.txt'
     return f_str
 
 
@@ -115,23 +104,13 @@ def fp_yale(data_type, subj):
 def load_subject_list(data):
     if data == 'chang':
         subj_list = pd.read_csv(subject_list_chang)
-    elif data == 'choe':
-        subj_list = pd.read_csv(subject_list_choe)
     elif data == 'nki':
         subj_list = pd.read_csv(subject_list_nki)
     elif data == 'yale':
         subj_list = pd.read_csv(subject_list_yale)
-    elif data == 'gu':
-        subj_list = pd.read_csv(subject_list_gu)
     elif data == 'hcp':
         subj_list = pd.read_csv(subject_list_hcp)
     return subj_list
-
-
-def load_nki_event_file():
-    # We are ASSUMING that the event timings are the same across all subjects (e.g. no counterbalancing)
-    events = pd.read_csv('data/dataset_nki/events/A00057406_task_breathhold_events.tsv', sep='\t')
-    return events
 
 
 def print_filter_info(params, load_physio):

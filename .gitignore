@@ -144,6 +144,8 @@ external/*
 
 /results
 
+# Rstudio history
+.Rhistory
 
 # scratch notebook
 scratch.ipynb

@@ -1,11 +1,12 @@
 import json
 import nibabel as nb 
 import numpy as np
+import pandas as pd
 import os
 
 from utils.butterworth_filters import filter_functional_data
 from utils.load_utils import find_fps, print_filter_info
-from utils.physio_preprocess import preprocess_physio
+from utils.physio_filter import preprocess_physio
 from scipy.io import loadmat 
 from scipy.stats import zscore
 
@@ -46,10 +47,9 @@ def impute_zero_voxels(nifti_data, zero_mask, orig_n_vert):
 	return nifti_full
 
 
-def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, group_method='stack'):
-	# Load analysis parameters
-	with open(params_fp) as params_file:
-		params = json.load(params_file)
+def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, 
+              events=False, group_method='stack', verbose=True, filter_nan_voxels=True):
+	params = load_params()
 
 	# Pull physio labels (if not already selected)
 	params_data = params[data]
@@ -60,15 +60,25 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, group_
 	mask = nb.load(mask_fp).get_fdata() > 0
 
 	# Pull file paths
-	fps = find_fps(data, level, physio, params_data, subj_n, scan_n)
+	fps = find_fps(data, level, physio, params_data, events, subj_n, scan_n)
 	# Print filter parameters for functional and physio signals
-	print_filter_info(params_data, load_physio)
+	if verbose:
+		print_filter_info(params_data, load_physio)
+
+	# Pull events, if specified in options
+	if events:
+		event_df = load_events(fps['events'], level, data, group_method)
+		params_data['events'] = event_df
+
 	# Pull data for subject level analysis
 	if level == 'subject':
-		print(f'Loading subject: {subj_n}')
+		if verbose:
+			print(f'Loading subject: {subj_n}')
 		func_data = load_subject_func(fps['func'][0], mask, params_data)
+		# If load subject and group method = list, place in list for downstream compatibility
 		if group_method == 'list':
 			func_data = [func_data]
+		# If load physio option is specified, load and preprocess physio
 		if load_physio:
 			physio_proc = []
 			for p in physio:
@@ -80,7 +90,8 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, group_
 			physio_proc = None
 	# Pull data for group level analysis
 	elif level == 'group':
-		print('Loading all subjects')
+		if verbose:
+			print('Loading all subjects')
 		func_data = load_group_func(fps['func'], mask, params_data, group_method)
 		if load_physio:
 			physio_proc = []
@@ -90,9 +101,34 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, group_
 		else:
 			physio_proc = None
 
-	func_data, zero_mask, n_vert_orig = filter_zero_voxels(func_data, group_method)
+	# Filter voxels with no recorded BOLD signal (i.e. time series of all 0s)
+	if filter_nan_voxels:
+		func_data, zero_mask, n_vert_orig = filter_zero_voxels(func_data, group_method)
+	else:
+		n_vert_orig = np.nonzero(mask)[0].shape[0]
+		zero_mask = np.tile(1, n_vert_orig).astype(bool)
+
 	return func_data, physio_proc, physio, zero_mask, n_vert_orig, params_data
-	
+
+
+def load_events_fp(fp, data):
+	return 
+
+
+def load_events(fps, level, data, group_method):
+	if level == 'subject':
+		event_df = load_events_fp(fp, data)
+		if group_method == 'list':
+			event_df = [event_df]
+	elif level == 'group':
+		group_events = []
+		for fp in fps:
+			events = load_events_fp(fp, data)
+			group_events.append(events)
+		if group_method == 'stack':
+			return pd.concat(group_events, axis=0)
+		else:
+			return group_events
 
 def load_group_func(fps, mask, params, group_method):
 	group_data = []
@@ -124,6 +160,19 @@ def load_group_physio(fps, params, data, physio_label, group_method):
 		return physio_all
 
 
+def load_nki_event_file():
+    # We are ASSUMING that the event timings are the same across all subjects (e.g. no counterbalancing)
+    events = pd.read_csv('data/dataset_nki/events/A00057406_task_breathhold_events.tsv', sep='\t')
+    return events
+
+
+def load_params():
+	# Load analysis parameters - filepath is defined as global variable at top of script
+	with open(params_fp) as params_file:
+		params = json.load(params_file)
+	return params
+
+
 def load_subject_func(fp, mask, params):
 	# Load scan
 	nifti = nb.load(fp)
@@ -135,6 +184,7 @@ def load_subject_func(fp, mask, params):
 
 
 def load_subject_physio(fp, params, data, physio_label):	
+	# Load AND preprocess physio
 	if data == 'chang':
 		physio_signal = loadmat(fp)
 		if physio_label == 'eeg':

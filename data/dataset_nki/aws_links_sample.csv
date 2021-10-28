@@ -151,12 +151,6 @@ A00060662,BAS1,M,26,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDS
 A00060662,BAS1,M,26,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060662/ses-BAS1/func/sub-A00060662_ses-BAS1_task-BREATHHOLD_acq-1400_events.tsv
 A00060662,BAS1,M,26,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060662/ses-BAS1/func/sub-A00060662_ses-BAS1_task-BREATHHOLD_acq-1400_physio.json
 A00060662,BAS1,M,26,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060662/ses-BAS1/func/sub-A00060662_ses-BAS1_task-BREATHHOLD_acq-1400_physio.tsv.gz
-A00060848,BAS1,F,27,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060848/ses-BAS1/anat/sub-A00060848_ses-BAS1_T1w.json
-A00060848,BAS1,F,27,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060848/ses-BAS1/anat/sub-A00060848_ses-BAS1_T1w.nii.gz
-A00060848,BAS1,F,27,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060848/ses-BAS1/func/sub-A00060848_ses-BAS1_task-BREATHHOLD_acq-1400_bold.json
-A00060848,BAS1,F,27,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060848/ses-BAS1/func/sub-A00060848_ses-BAS1_task-BREATHHOLD_acq-1400_bold.nii.gz
-A00060848,BAS1,F,27,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060848/ses-BAS1/func/sub-A00060848_ses-BAS1_task-BREATHHOLD_acq-1400_events.json
-A00060848,BAS1,F,27,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00060848/ses-BAS1/func/sub-A00060848_ses-BAS1_task-BREATHHOLD_acq-1400_events.tsv
 A00061276,BAS1,F,37,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00061276/ses-BAS1/anat/sub-A00061276_ses-BAS1_T1w.json
 A00061276,BAS1,F,37,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00061276/ses-BAS1/anat/sub-A00061276_ses-BAS1_T1w.nii.gz
 A00061276,BAS1,F,37,RIGHT,s3://fcp-indi/data/Projects/RocklandSample/RawDataBIDSLatest/sub-A00061276/ses-BAS1/func/sub-A00061276_ses-BAS1_task-BREATHHOLD_acq-1400_bold.json
