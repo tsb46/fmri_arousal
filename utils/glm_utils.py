@@ -5,6 +5,7 @@ from patsy import dmatrix
 from scipy.stats import gamma, zscore
 from sklearn.linear_model import LinearRegression
 
+
 def construct_design_matrix(model_formula, df, omit_intercept=True):
     # Modify formula to omit intercept (sklearn includes by default)
     if omit_intercept:
@@ -28,13 +29,43 @@ def create_interaction_maps(beta_s1, beta_i,
     return np.array(beta_simple)
 
 
-def double_gamma_hrf(t, tr, dip=0.35):
+def get_hrf(t, tr, type):
+    t_steps = np.arange(0, t, tr)
+    if type == 'canonical':
+        hrf = hrf_double_gamma(t_steps)
+    elif type == 'rvt':
+        hrf = hrf_rvt(t_steps)
+    elif type == 'hr':
+        hrf = hrf_hr(t_steps)
+    return hrf
+
+
+def get_interaction_map(interaction_map_str, design_cols, subj_beta_maps):
+    if interaction_map_str not in design_cols:
+            raise Exception('Interaction string specified for option -i does not match any string in model formula')
+    else:
+        i_index = design_cols.tolist().index(interaction_map_str)
+    v1v2 = interaction_map_str
+    v1_i, v2_i = parse_interaction_string(v1v2)
+    # Remember, the beta maps are ordered according to the order of the columns in the design_mat dataframe
+    avg_beta_inter = np.mean([bmap[i_index] for bmap in subj_beta_maps], axis=0) 
+    return avg_beta_inter, v1_i, v2_i
+
+
+def hrf_double_gamma(t, dip=0.35):
     # http://www.jarrodmillman.com/rcsds/lectures/convolution_background.html
-    n_steps = np.arange(0, t, tr)
-    gamma_peak = gamma.pdf(n_steps, 6)
-    gamma_under = gamma.pdf(n_steps, 12)
+    gamma_peak = gamma.pdf(t, 6)
+    gamma_under = gamma.pdf(t, 12)
     gamma_double = gamma_peak - dip * gamma_under
     return gamma_double / np.max(gamma_double) * 0.6
+
+
+def hrf_hr(t):
+    return (0.6*t**2.7)*np.exp(-t/1.6) - (16/np.sqrt(2*np.pi*9)*(np.exp((-1/2)*((t-12)**2)/9)))
+
+
+def hrf_rvt(t):
+    return (0.6*t**2.1)*np.exp(-t/1.6) - ((0.0023*t**3.54)*np.exp(-t/4.25))
 
 
 def lag(arr, num, fill_value=0):
@@ -51,6 +82,28 @@ def lag(arr, num, fill_value=0):
     return result
 
 
+def lag_and_convolve_physio(physio_signals, physio_labels, n_subj, time_lag, convolve, tr):
+    physio_sig_proc = []
+    for subj_n in range(n_subj):
+        subj_phys = []
+        for p, p_label in zip(physio_signals, physio_labels):
+            if convolve and ((p_label == 'rv') or (p_label == 'egg')):
+                hrf = get_hrf(30, tr, 'rvt')
+                subj_sig = convolve_hrf(hrf, p[subj_n])
+            elif convolve and (p_label == 'hr'):
+                hrf = get_hrf(30, tr, 'hr')
+                subj_sig = convolve_hrf(hrf, p[subj_n])
+            elif convolve:
+                hrf = get_hrf(30, tr, 'canonical')
+                subj_sig = convolve_hrf(hrf ,p[subj_n])
+            else:
+                subj_sig = p[subj_n]
+            physio_sig_lag = lag(subj_sig, time_lag)
+            subj_phys.append(physio_sig_lag)
+        physio_sig_proc.append(np.stack(subj_phys, axis=1))
+    return physio_sig_proc
+
+
 def linear_regression(design_mat, func_data, labels, norm=True):
     if norm:
         func_data = zscore(func_data)
@@ -63,6 +116,15 @@ def linear_regression(design_mat, func_data, labels, norm=True):
         l_indx = np.where(lin_reg.feature_names_in_ == l)[0][0]
         betas.append(lin_reg.coef_[:, l_indx])
     return betas
+
+
+def mask_voxels(func_data):
+    # Identify and mask out voxels that have zero variance (i.e. are constant values, usually 0's)
+    mask = np.where(np.std(func_data, axis=0) > 0)[0]
+    func_data_masked = func_data[:, mask]
+    beta_map = np.empty(func_data.shape[1])
+    beta_map.fill(np.nan)
+    return func_data_masked, mask, beta_map
 
 
 def onsets_to_block(df, scan_len, tr):
