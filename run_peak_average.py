@@ -78,7 +78,7 @@ if __name__ == '__main__':
 	                                 'physio time series')
 	parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'choe', 'gu', 'nki', 'yale', 'hcp'], 
+                        choices=['chang', 'nki', 'yale', 'hcp'], 
                         required=True,
                         type=str)
 	parser.add_argument('-v', '--pos_v_neg',
