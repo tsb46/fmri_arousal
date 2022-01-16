@@ -153,45 +153,24 @@ def run_main(dataset, file, resp_col, ppg_col, trigger_col, func_tr, scan_len,
 if __name__ == '__main__':
     """Preprocess respiration and PPG data """
     parser = argparse.ArgumentParser(description='Preprocess PPG and respiration data')
-    parser.add_argument('-d', '--dataset',
-                        help='<Required> Dataset to run analysis on - only option is NKI',
-                        choices=['nki', 'hcp'], 
+    parser.add_argument('-p', '--polysomnography',
+                        help='<Required> File path to polysomnography file in edf dataset',
                         required=True,
                         type=str)
-    parser.add_argument('-f', '--file_path_bids',
-                        help='<Required> path to physio file (in BIDS format)',
+    parser.add_argument('-h', '--hypnogram',
+                        help='<Required> File path to hynogram file in edf dataset',
                         required=True,
                         type=str)
-    parser.add_argument('-r', '--resp',
-                        help='column number of respiration time series (starts at 0)',
-                        required=True,
-                        type=int)
-    parser.add_argument('-p', '--ppg',
-                        help='column number of ppg time series (starts at 0)',
-                        required=True,
-                        type=int)
-    parser.add_argument('-g', '--trigger',
-                        help='column number of trigger time series (starts at 0)',
-                        required=True,
-                        type=int)
-    parser.add_argument('-t', '--tr',
-                        help='the repetition time of the data',
-                        required=True,
-                        type=float)
-    parser.add_argument('-n', '--scan_length',
-                        help='number of volumes in scan',
-                        required=True,
-                        type=int)
-    parser.add_argument('-s', '--sampling_rate',
-                        help='sampling rate of physio data',
-                        required=True,
-                        type=float)
-    parser.add_argument('-o', '--output_file',
-                        help='output file path',
+    parser.add_argument('-oe', '--output_file_eeg',
+                        help='output file path for preprocessed eeg',
+                        required=False,
+                        default=os.getcwd(),
+                        type=str)
+    parser.add_argument('-or', '--output_file_resp',
+                        help='output file path for respiration time course',
                         required=False,
                         default=os.getcwd(),
                         type=str)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['dataset'], args_dict['file_path_bids'], args_dict['resp'], args_dict['ppg'],
-             args_dict['trigger'], args_dict['tr'], args_dict['scan_length'], 
-             args_dict['sampling_rate'], args_dict['output_file'])
+    run_main(args_dict['polysomnography'], args_dict['hypnogram'], 
+             args_dict['output_file_eeg'], args_dict['output_file_resp'])

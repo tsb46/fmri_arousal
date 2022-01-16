@@ -3,7 +3,7 @@ import nibabel as nb
 import numpy as np
 import os
 
-from butterworth_filters import butterworth_filter
+from utils.signal.butterworth_filters import butterworth_filter
 from scipy.stats import zscore
 
 

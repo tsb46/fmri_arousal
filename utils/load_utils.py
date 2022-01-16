@@ -7,6 +7,7 @@ subject_list_chang = 'data/dataset_chang/subject_list_chang.csv'
 subject_list_yale = 'data/dataset_yale/subject_list_yale_subset.csv'
 subject_list_nki = 'data/dataset_nki/subject_list_nki.csv'
 subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_subset.csv'
+subject_list_lemon = 'data/dataset_lemon/subject_list_lemon.csv'
 
 
 def find_fps(data, level, physio, params, events=False, subj_n=None, scan=None):
@@ -53,6 +54,9 @@ def find_fps(data, level, physio, params, events=False, subj_n=None, scan=None):
     elif data == 'hcp':
         fps = {d_type: [fp_hcp(d_type, subj_scan[0],subj_scan[1]) for subj_scan in search_terms] 
                for d_type in physio_fp}
+    elif data == 'lemon':
+        fps = {d_type: [fp_lemon(d_type, subj) for subj in search_terms] 
+               for d_type in physio_fp}
     return fps
 
 
@@ -63,13 +67,15 @@ def fp_chang(data_type, subj, scan):
         scan_str = f'00{scan}'
 
     if data_type == 'func':
-        f_str = f'data/dataset_chang/func/proc3_filter_norm/sub_00{subj}-mr_{scan_str}-ecr_echo1_w_dspk_blur3mm.nii.gz'
+        f_str = f'data/dataset_chang/func/proc4_filter_norm/sub_00{subj}_mr_{scan_str}.nii.gz'
     elif data_type == 'eeg':
         f_str = f'data/dataset_chang/eeg/sub_00{subj}-mr_{scan_str}-ecr_echo1_eeg_at.mat'
     elif data_type == 'hr':
         f_str = f'data/dataset_chang/physio_hr/sub_00{subj}-mr_{scan_str}-ecr_echo1_hr.mat'
     elif data_type == 'rv':
         f_str = f'data/dataset_chang/physio_rv/sub_00{subj}-mr_{scan_str}-ecr_echo1_rv.mat'
+    elif data_type == 'csf':
+        f_str = f'data/dataset_chang/physio_csf/raw/sub_00{subj}_mr_{scan_str}.txt'
     return f_str
 
 
@@ -80,6 +86,18 @@ def fp_hcp(data_type, subj, scan):
         f_str = f'data/dataset_hcp/physio/proc1_hr_rv/{subj}_{scan}1_physio_rv.txt'
     elif data_type == 'hr':
         f_str = f'data/dataset_hcp/physio/proc1_hr_rv/{subj}_{scan}1_physio_hr.txt'
+    return f_str
+
+
+def fp_lemon(data_type, subj):
+    if data_type == 'func':
+        f_str = f'data/dataset_lemon/func/proc5_filter_norm/{subj}_task_rest.nii.gz'
+    elif data_type == 'rv':
+        f_str = f'data/dataset_lemon/physio/proc1_physio/{subj}_physio_RESP_VAR_W.txt'
+    elif data_type == 'hr':
+        f_str = f'data/dataset_lemon/physio/proc1_physio/{subj}_physio_ECG_HR_NK.txt'
+    elif data_type == 'map':
+        f_str = f'data/dataset_lemon/physio/proc1_physio/{subj}_physio_MAP_W.txt'
     return f_str
 
 
@@ -110,6 +128,8 @@ def load_subject_list(data):
         subj_list = pd.read_csv(subject_list_yale)
     elif data == 'hcp':
         subj_list = pd.read_csv(subject_list_hcp)
+    elif data == 'lemon':
+        subj_list = pd.read_csv(subject_list_lemon)
     return subj_list
 
 
