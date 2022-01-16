@@ -132,10 +132,11 @@ dmypy.json
 # Data and result folders
 data/dataset_chang/*/
 data/dataset_yale/*/
-data/dataset_choe/*/
 data/dataset_nki/*/
-data/dataset_gu/*/
 data/dataset_hcp/*/
+data/dataset_lemon/*/
+data/dataset_eke/*/
+data/dataset_dream/*/
 
 external/*
 

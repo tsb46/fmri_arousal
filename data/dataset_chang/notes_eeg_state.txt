@@ -1,0 +1,15 @@
+sub_0010-mr_0009: awake up to TR 250ish
+sub_0010-mr_0015: awake entire scan
+sub_0012-mr_0012: awake TR 550:end (not very much, could skip)
+sub_0012-mr_0018: awake entire scan
+sub_0014-mr_0012: awake TR 1:400ish
+sub_0014-mr_0018: awake entire scan
+sub_0016-mr_0006: awake TR 1:100 (not very much, could skip)
+sub_0016-mr_0015:  (possibly awake all the time, but with intermittent bouts of sleep. HR signal had some spikes that I interpolated over)
+sub_0021-mr_0012: (drifts off at the beginning, could skip)
+sub_0027-mr_0009:  (drifts off at the beginning, could skip) - confirmed by sleep tech
+sub_0028-mr_0012: awake the whole time - confirmed by sleep tech
+sub_0029-mr_0012: awake the whole time - confirmed by sleep tech
+sub_0030-mr_0009: (intermittent wake/sleep - could skip) confirmed by sleep tech
+sub_0031-mr_0015: awake the whole time - confirmed by sleep tech
+sub_0032-mr_0009: (unclear from EEG - sleep tech thinks awake for approx. first half of scan)

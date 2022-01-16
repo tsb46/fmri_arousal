@@ -62,8 +62,9 @@ def run_main(dataset, model_formula, interaction_map, time_lag,
                                                          subj_beta_maps)
         
         
-    # Write out individual maps for each covariate in model
+    # Write out group map for each covariate in model
     for i, term in enumerate(design_mat.columns):
+        # Create fixed effect map (averaged across subjects)
         avg_beta = np.mean([bmap[i] for bmap in subj_beta_maps], axis=0) 
         write_results(dataset, term, avg_beta[np.newaxis, :], 'group', None, None, zero_mask, n_vert)
         # If specified, and covariate is part of an interaction, create an interaction map
@@ -82,7 +83,7 @@ if __name__ == '__main__':
                                      'physio time series')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp'], 
+                        choices=['chang', 'nki', 'yale', 'hcp', 'lemon'], 
                         required=True,
                         type=str)
     parser.add_argument('-f', '--model_formula',

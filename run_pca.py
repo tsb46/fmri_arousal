@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run PCA or CPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'choe', 'gu', 'nki', 'yale', 'hcp'], 
+                        choices=['chang', 'nki', 'yale', 'hcp', 'lemon'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subject_n',
                         help='subject number for subject level analysis (if level=subject)',
                         default=None,
-                        type=str)
+                        type=int)
     parser.add_argument('-x', '--scan_n',
                         help='scan number for subject level analysis (if multiple runs from same subject)',
                         default=None,
