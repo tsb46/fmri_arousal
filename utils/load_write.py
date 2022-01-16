@@ -4,16 +4,16 @@ import numpy as np
 import pandas as pd
 import os
 
-from utils.butterworth_filters import filter_functional_data
+from utils.signal.butterworth_filters import filter_functional_data
 from utils.load_utils import find_fps, print_filter_info
-from utils.physio_filter import preprocess_physio
+from utils.load_physio import preprocess_physio
 from scipy.io import loadmat 
 from scipy.stats import zscore
 
 # path to the analysis parameter .json file. Never move this out of the base directory!
 params_fp='analysis_params.json'
-# path to 3mm brain mask file. Never move this out of the masks directory!
-mask_fp = 'masks/MNI152_T1_3mm_brain_mask.nii.gz'
+# path to 3mm dilated brain mask file. Never move this out of the masks directory!
+mask_fp = 'masks/MNI152_T1_3mm_brain_mask_dilated2.nii.gz'
 
 
 def convert_2d(mask, nifti_data):
@@ -185,7 +185,7 @@ def load_subject_func(fp, mask, params):
 
 def load_subject_physio(fp, params, data, physio_label):	
 	# Load AND preprocess physio
-	if data == 'chang':
+	if (data == 'chang') and (physio_label != 'csf'):
 		physio_signal = loadmat(fp)
 		if physio_label == 'eeg':
 			physio_signal = physio_signal['eeg_at'][:,0]
