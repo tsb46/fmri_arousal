@@ -1,7 +1,7 @@
 
 { "chang": {
 		"tr": 2.1,
-		"physio": ["eeg", "hr", "rv"],
+		"physio": ["eeg", "hr", "rv", "csf"],
 		"nscans": 15,
 		"data": { 
 			"func": {
@@ -25,7 +25,8 @@
 					"filter_choice": {
 						"eeg": "bandpass",
 						"hr": "bandpass",
-						"rv": "bandpass"
+						"rv": "bandpass",
+						"csf": "bandpass"
 					},
 					"bandpass" : {
 						"low": 0.01,
@@ -184,6 +185,56 @@
 						"low": 0.01
 					},
 					"despike": 0,
+					"despike_params" : {
+						"widths": 3,
+						"min_snr": 2,
+						"noise_perc": 5,
+						"window_size": 100,
+						"interpolation_window": [2,2]
+					}
+				}
+			}
+		}
+	},
+	"lemon": {
+		"tr": 1.4,
+		"physio": ["hr", "rv", "map"],
+		"nscans": 19,
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "bandpass",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"concat_method": "zscore",
+				"filter_params": {
+					"filter_choice": {
+						"rv": "bandpass",
+						"hr": "bandpass",
+						"map": "bandpass"
+					},
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.01
+					},
+					"highpass": {
+						"low": 0.01
+					},
+					"despike": 1,
 					"despike_params" : {
 						"widths": 3,
 						"min_snr": 2,

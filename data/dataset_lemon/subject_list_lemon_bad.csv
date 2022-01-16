@@ -1,0 +1,13 @@
+subject,sess,physio_quality,notes,Gender_ 1=female_2=male,Age
+sub-032334,1,bad,bad bp,1,30-35
+sub-032352,1,bad,bad ecg,1,20-25
+sub-032358,1,bad,bad bp,2,20-25
+sub-032363,1,bad,bad resp,1,20-25
+sub-032388,1,bad,bad bp,1,25-30
+sub-032403,1,bad,bad resp,1,25-30
+sub-032445,1,bad,bad resp,2,30-35
+sub-032500,1,bad,bad bp,2,20-25
+sub-032508,1,bad,bad resp,2,25-30
+sub-032516,1,bad,bad ppg,2,25-30
+sub-032518,1,bad,bad resp,2,20-25
+sub-032521,1,bad ,bad ecg,2,25-30
