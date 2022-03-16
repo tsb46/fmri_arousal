@@ -6,7 +6,6 @@ import pickle
 from run_pca import pca
 from scipy.signal import hilbert
 from scipy.stats import zscore
-from utils.butterworth_filters import filter_functional_data
 from utils.load_write import load_data, write_nifti
 from utils.kernel_cca import KernelCCA
 
@@ -162,7 +161,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run CCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp'], 
+                        choices=['chang', 'nki', 'yale', 'hcp', 'lemon'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',

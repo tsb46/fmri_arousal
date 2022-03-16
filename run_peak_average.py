@@ -78,7 +78,7 @@ if __name__ == '__main__':
 	                                 'physio time series')
 	parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp'], 
+                        choices=['chang', 'nki', 'yale', 'hcp', 'lemon'], 
                         required=True,
                         type=str)
 	parser.add_argument('-v', '--pos_v_neg',
@@ -111,18 +111,18 @@ if __name__ == '__main__':
 	parser.add_argument('-lw', '--left_window_size',
 	                    help='Length of left window from selected peak', 
 	                    required=False,
-	                    default=10,
+	                    default=15,
 	                    type=int)
 	parser.add_argument('-rw', '--right_window_size',
 	                    help='Length of right window from selected peak', 
 	                    required=False,
-	                    default=10,
+	                    default=15,
 	                    type=int)
 	parser.add_argument('-t', '--peak_thres',
 	                    help='height (absolute value) threshold for peak detection - set in zscore '
 	                    'normalized units, i.e. std. deviations from the mean', 
 	                    required=False,
-	                    default=1,
+	                    default=3,
 	                    type=float)
 	args_dict = vars(parser.parse_args())
 	run_main(args_dict['dataset'], args_dict['level'], args_dict['physio'], args_dict['subject_n'], 
