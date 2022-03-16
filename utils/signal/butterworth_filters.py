@@ -1,4 +1,6 @@
 import json
+import numpy as np 
+import pandas as pd
 
 from scipy.signal import butter, sosfiltfilt, sosfreqz
 
@@ -25,7 +27,19 @@ def butter_lowpass(cutoff, fs, order=5):
 	return sos
 
 
-def butterworth_filter(signals, lowcut, highcut, fs, filter_type):
+def butterworth_filter(signals, lowcut, highcut, fs, filter_type, npad=1000):
+	# handle pandas objects
+	if (isinstance(signals, pd.Series)):
+		input_type = 'series'
+		signal_name = signals.name
+		signals = signals.values # convert to array
+	elif (isinstance(signals, pd.DataFrame)):
+		input_type='dataframe'
+		signal_cols = signals.columns
+		signals = signals.values
+	else:
+		input_type='array'
+	# Set filter params
 	if filter_type == 'bandpass':
 		sos = butter_bandpass(lowcut, highcut, fs)
 	elif filter_type == 'lowpass':
@@ -34,7 +48,19 @@ def butterworth_filter(signals, lowcut, highcut, fs, filter_type):
 		sos = butter_highpass(lowcut, fs)
 	elif filter_type == 'raw':
 		return signals
+	if np.ndim(signals) == 1:
+		signals = signals[:, np.newaxis]
+	# Median padding to reduce edge effects
+	signals = np.pad(signals,[(npad, npad), (0, 0)], 'median')
+	# backward and forward filtering
 	signals = sosfiltfilt(sos, signals, axis=0)
+	# Cut padding to original signal
+	signals = signals[npad:-npad, :]
+	# return to pandas dataframe or series if input
+	if input_type == 'series':
+		signals = pd.Series(np.squeeze(signals), name=signal_name)
+	elif input_type == 'dataframe':
+		signals = pd.DataFrame(signals, columns=signal_cols)
 	return signals
 
 
