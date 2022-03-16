@@ -5,7 +5,19 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks, hilbert, resample
 from utils.signal.butterworth_filters import butterworth_filter 
-from scipy.stats import iqr
+from scipy.stats import iqr, zscore
+
+
+def clip_spikes(ts, spike_thres=5):
+    # Clip time series within bounds
+    # Spike thres is set in z-score units, must convert to original units
+    if ~isinstance(ts, pd.Series):
+        ts = pd.Series(ts)
+    ts_mean = ts.mean()
+    ts_std = ts.std()
+    ts_spike_thres = (spike_thres*ts_std) + ts_mean
+    ts_clip = ts.clip(-ts_spike_thres, ts_spike_thres)
+    return ts_clip
 
 
 def eeg_band_amplitudes(eeg, eeg_bands, l_trans=1, h_trans=1):
@@ -16,35 +28,47 @@ def eeg_band_amplitudes(eeg, eeg_bands, l_trans=1, h_trans=1):
         eeg_freq = eeg.copy()
         eeg_freq.filter(fmin, fmax, n_jobs=1,  # use more jobs to speed up.
                         l_trans_bandwidth=l_trans,  # make sure filter params are the same
-                        h_trans_bandwidth=h_trans)  # in each band and skip "auto" option.
+                        h_trans_bandwidth=h_trans, # in each band and skip "auto" option.
+                        verbose=False)  
         # get analytic signal (envelope)
         eeg_freq.apply_hilbert(envelope=True)
         eeg_freqs_all.append(eeg_freq)
     return eeg_freqs_all    
 
 
-def filt_resample_physio_to_func(ts, high_cut, func_len, sf_physio):
-    # Lowpass filter to avoid aliasing
-    ts_filt = butterworth_filter(ts, None, high_cut, sf_physio, 'lowpass')
-    ts_func = nk.signal_resample(ts_filt, desired_length=func_len,
+def filt_resample_physio_to_func(ts, high_cut, func_len, sf):
+    # Lowpass filter
+    if high_cut is not None:
+        ts = butterworth_filter(ts, None, high_cut, sf, 'lowpass')
+    ts_func = nk.signal_resample(ts, desired_length=func_len,
                                  method='FFT')
     return ts_func
 
 
-def find_interpolate_spikes(ts, spike_thres=6):
-    peaks_info = nk.signal_findpeaks(ts, relative_height_min=spike_thres, relative_median=True)
-    for onset, offset in zip(peaks_info['Onsets'], peaks_info['Offsets']):
-        if (~np.isnan(onset)) and (~np.isnan(offset)):
-            onset = int(onset)
-            offset = int(offset)
-            ts[onset:offset] = np.nan
-
-    not_nan = np.logical_not(np.isnan(ts))
-    indices = np.arange(len(ts))
-    interp = interp1d(indices[not_nan], ts[not_nan], kind='cubic', 
-                      fill_value="extrapolate")
-    ts_cleaned = interp(indices)
-    return ts_cleaned
+def find_interpolate_spikes(ts, sf, win_s=100, spike_thres=10, pad_l=5):
+    # Implement Hampel filter
+    if ~isinstance(ts, pd.Series):
+        ts = pd.Series(ts)
+    win = win_s*sf
+    ts_rolling_med = ts.rolling(win).median()
+    ts_rolling_mad = ts.rolling(win).apply(
+        lambda x: np.median(np.abs(x - np.median(x))), raw=True
+    )
+    ts_rolling_z = (ts - ts_rolling_med)/ts_rolling_mad
+    ts_rolling_z = ts_rolling_z.backfill()
+    ts_spike_outliers = np.abs(ts_rolling_z) > spike_thres
+    ts_clean = ts.copy()
+    # Expand windows around outliers
+    diffs = np.diff(ts_spike_outliers.astype(int))
+    starts = np.where(diffs == 1)[0]
+    stops = np.where(diffs == -1)[0]
+    for start, stop in zip(starts, stops):
+        if ((start-pad_l) >= 0) & ((stop+pad_l) < len(ts)):
+            span_idx = (start-(pad_l+1), stop+pad_l)
+            ts_spike_outliers.iloc[span_idx[0]:span_idx[1]] = True
+    # Median interpolation of outlier spans
+    ts_clean.loc[ts_spike_outliers] = ts_rolling_med.loc[ts_spike_outliers]
+    return ts_clean
 
 
 def get_peaks_ppg(ppg_sig, ppg_rng, sf_physio):
@@ -54,7 +78,7 @@ def get_peaks_ppg(ppg_sig, ppg_rng, sf_physio):
     return locs, pks_d 
 
 
-def hilbert_resp_amplitude(ts, sf, bp_filt=[0.05, 3]):
+def hilbert_resp_amplitude(ts, sf, bp_filt=[0.05, 0.5]):
     ts_filt = butterworth_filter(ts, bp_filt[0], bp_filt[1], sf, 'bandpass')    
     ts_amp = np.abs(hilbert(ts_filt))
     return ts_amp
@@ -65,7 +89,7 @@ def interbeat_interval_ppg(ts, sf_physio, bp_filt=[0.5,2]):
     tr_physio = 1 / sf_physio
 
     # Bandpass filter PPG signal
-    ppg_bpf = butterworth_filter(ts, bp_filt[0], bp_filt[1], sf_physio, 'bandpass')
+    ppg_bpf = np.squeeze(butterworth_filter(ts, bp_filt[0], bp_filt[1], sf_physio, 'bandpass'))
 
     # Get IQR OF PPG (25%, 75%)
     ppg_rng = iqr(ppg_bpf)
@@ -90,7 +114,18 @@ def nk_extract_ecg_signals(ts, sf):
     rpeaks, info = nk.ecg_peaks(ecg_cleaned, sampling_rate=sf, correct_artifacts=True)
     ecg_rate = nk.signal_rate(rpeaks, sampling_rate=sf, desired_length=len(rpeaks))
     rpeaks['ECG_Rate'] = ecg_rate
-    return rpeaks
+    return rpeaks[['ECG_Rate']]
+
+
+def nk_extract_emg_signals(ts, sf):
+    # Process EMG signals
+    """ Not a high enough sampling frequency for dream dataset (200 Hz) 
+    for now just take the Hilbert envelope"""
+    # Apply highpass filter (5Hz) to remove slow drifts
+    # ts_filt = butterworth_filter(ts, 5, None, sf, 'highpass')
+    # emg_amp = np.abs(hilbert(ts_filt))
+    emg_df = pd.DataFrame({'EMG_AMP': ts})
+    return emg_df
 
 
 def nk_extract_ppg_signals(ts, sf):
@@ -98,7 +133,7 @@ def nk_extract_ppg_signals(ts, sf):
     # Extract R-peaks and heart rate from PPG
     # Clean PPG signal
     ppg_signals, ppg_info = nk.ppg_process(ts, sampling_rate=sf)
-    return ppg_signals
+    return ppg_signals[['PPG_Rate']]
 
 
 def nk_extract_resp_signals(ts, sf):
@@ -107,6 +142,9 @@ def nk_extract_resp_signals(ts, sf):
     # compute rvt = breathing frequency * breathing amplitude
     r_signals['RSP_RVT'] = r_signals['RSP_Rate'] * r_signals['RSP_Amplitude']
     r_signals['RSP_AMP_HILBERT'] = hilbert_resp_amplitude(ts, sf)
+    # compute respiratory variability (6 seconds)
+    window = int(sf*6)
+    r_signals['RSP_RV'] = r_signals['RSP_Clean'].rolling(window).std().fillna(0)
     return r_signals
 
 
@@ -119,7 +157,8 @@ def nk_extract_map(ts_dbp, ts_sbp, sf, bp_filt=(0.01, 0.1)):
     return pd.DataFrame(ts_map, columns=['MAP'])
 
 
-def nk_extract_physio(ts, phys_label, sf_physio, func_len, lowpass):
+def nk_extract_physio(ts, phys_label, sf_physio, func_len=None, lowpass=None, 
+                      resample=True, clip=True):
     # Neurokit physio preprocessing - output of nk extractor functions are Pandas dfs
     # If blood pressure, separate dbp and sbp
     if phys_label == 'bpp':
@@ -132,16 +171,54 @@ def nk_extract_physio(ts, phys_label, sf_physio, func_len, lowpass):
         phys_ts = nk_extract_resp_signals(ts, sf_physio)
     elif phys_label == 'ppg':
         phys_ts = nk_extract_ppg_signals(ts, sf_physio)
+    elif phys_label == 'emg':
+        phys_ts = nk_extract_emg_signals(ts, sf_physio)
 
     # resample physio to functional scans
-    phys_ts_r = phys_ts.apply(filt_resample_physio_to_func, high_cut=lowpass, 
-                              func_len=func_len, sf_physio=sf_physio, axis=0)
+    if clip:
+        phys_ts = phys_ts.apply(clip_spikes, axis=0)
+    if resample:
+        phys_ts = phys_ts.apply(filt_resample_physio_to_func, high_cut=lowpass, 
+                                func_len=func_len, sf=sf_physio, axis=0)
 
-    return phys_ts_r
+    return phys_ts
+
+
+def reject_amplitude(eeg_ts, epochs, sf, median_thres=3, window=180, low=25, high=40):
+    # Reject high amplitude high-frequency epochs based on a rolling median filter
+    # Median threshold is set to 3 (epoch median / rolling_median > 3)
+    # Window is specified in secs (default: 180s = 3min)
+    w = window*sf
+    eeg_ts_amp = []
+    for ts in eeg_ts: 
+        ts_df = pd.DataFrame({'eeg': ts, 'epoch': epochs})
+        ts_df['amp'] = np.abs(hilbert(butterworth_filter(ts, low, high, sf, 'bandpass')))
+        eeg_ts_amp.append(ts_df)
+
+    reject_df = pd.DataFrame({'epoch': epochs})
+    for i, ts_df in enumerate(eeg_ts_amp):
+        ts_df['rolling_median'] = ts_df.rolling(window=window)['amp'].median()
+        ts_df['epoch_median'] = ts_df.groupby('epoch')['amp'].transform('median')
+        reject_df[f'reject_{i}'] = (ts_df['epoch_median']/ts_df['rolling_median']) > median_thres
+
+    reject_cols = [f'reject_{i}' for i in range(len(eeg_ts))]
+    reject_indx = reject_df[reject_cols].any(axis=1)
+    return reject_indx
+
+
+    reject_all = []
+    for i, ts in enumerate(emg_ts):
+        ts_df = pd.DataFrame({'emg': ts, 'epoch': epochs})
+        ts_df['reject'] = ts_df.groupby('epoch')['emg'].transform(lambda x: (x.max() - x.min())>min_max_thres)
+        reject = ts_df.groupby('epoch')['reject'].apply(lambda x: (x > 0).sum() > 0).reset_index()
+        reject_all.append(reject['reject'])
+    reject_df = pd.concat(reject_all, axis=1)
+    reject_indx = reject_df.any(axis=1)
+    return reject_indx
 
 
 def trigger_extract_physio(ts, phys_label, func_scan_len, sf_func, 
-                           sf_physio, win=3, despike=True):
+                           sf_physio, win=6, clip=True):
     """
     Custom window-based physio preprocessing from Chang lab
     May. 2021
@@ -159,13 +236,13 @@ def trigger_extract_physio(ts, phys_label, func_scan_len, sf_func,
         ppg_ibi, ppg_t_ibi = interbeat_interval_ppg(ts, sf_physio)
     # If resp, filter to typical breathing frequency (0.05 - 3Hz)
     elif phys_label == 'resp':
-        ts = pd.Series(butterworth_filter(ts, 0.05, 3, sf_physio, 'bandpass'))
+        ts = pd.Series(np.squeeze(butterworth_filter(ts, 0.05, 3, sf_physio, 'bandpass')))
     # If blood pressure, separated dbp and sbp and filter to typical resting-state fMRI range
     elif phys_label == 'bpp':
         # Assume dbp is first indx (double check)
         ts_dbp, ts_sbp = ts[0], ts[1]
-        ts_dbp = pd.Series(butterworth_filter(ts_dbp, 0.01, 0.1, sf_physio, 'bandpass'))
-        ts_sbp = pd.Series(butterworth_filter(ts_sbp, 0.01, 0.1, sf_physio, 'bandpass'))
+        ts_dbp = pd.Series(np.squeeze(butterworth_filter(ts_dbp, 0.01, 0.1, sf_physio, 'bandpass')))
+        ts_sbp = pd.Series(np.squeeze(butterworth_filter(ts_sbp, 0.01, 0.1, sf_physio, 'bandpass')))
 
     # Get time stamps of window centered on func TR
     t_fmri = trigger_window_center(tr_func, func_scan_len)
@@ -175,7 +252,7 @@ def trigger_extract_physio(ts, phys_label, func_scan_len, sf_func,
     for kk in range(func_scan_len):
         t = t_fmri[kk]
         if phys_label == 'ppg':
-            t_p = trigger_extract_hr_rate(t, ppg_ibi, ppg_t_ibi, win, tr_func, func_scan_len)
+            t_p = trigger_extract_hr_rate(t, ppg_ibi, ppg_t_ibi, win, sf_physio, tr_func, func_scan_len)
         elif phys_label == 'resp':
             t_p = trigger_extract_resp_var(ts, t, win, tr_physio)
         elif phys_label == 'bpp':
@@ -183,14 +260,17 @@ def trigger_extract_physio(ts, phys_label, func_scan_len, sf_func,
 
         t_phys.append(t_p)
 
+    if clip:
+        t_phys = clip_spikes(t_phys)
+
     return t_phys
     
 
 
-def trigger_extract_hr_rate(t, IBI, t_IBI, win, func_tr, scan_len, 
+def trigger_extract_hr_rate(t, IBI, t_IBI, win, sf_physio, func_tr, scan_len, 
                             max_hr=100, min_hr=40):
     # Get bounds of window
-    t1 = max(0, t - win*0.5)
+    t1 = max(0, t - (win*0.5))
     t2 = min(func_tr*scan_len, t + (win*0.5))
 
     inds1 = [idx for idx, element in enumerate(t_IBI) if element <= t2]

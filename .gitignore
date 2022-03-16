@@ -150,6 +150,7 @@ external/*
 
 # scratch notebook
 scratch.ipynb
-
+chang_data_analysis.ipynb
+hcp_data_analysis.ipynb
 
 

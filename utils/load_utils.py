@@ -6,7 +6,7 @@ import pandas as pd
 subject_list_chang = 'data/dataset_chang/subject_list_chang.csv'
 subject_list_yale = 'data/dataset_yale/subject_list_yale_subset.csv'
 subject_list_nki = 'data/dataset_nki/subject_list_nki.csv'
-subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_subset.csv'
+subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_subset_test.csv'
 subject_list_lemon = 'data/dataset_lemon/subject_list_lemon.csv'
 
 
@@ -67,15 +67,27 @@ def fp_chang(data_type, subj, scan):
         scan_str = f'00{scan}'
 
     if data_type == 'func':
-        f_str = f'data/dataset_chang/func/proc4_filter_norm/sub_00{subj}_mr_{scan_str}.nii.gz'
-    elif data_type == 'eeg':
-        f_str = f'data/dataset_chang/eeg/sub_00{subj}-mr_{scan_str}-ecr_echo1_eeg_at.mat'
+        f_str = f'data/dataset_chang/func/proc4_bandpass/sub_00{subj}-mr_{scan_str}-ecr_echo1_w_dspk_blur3mm.nii.gz' 
+    elif data_type == 'alpha':
+        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Alpha.txt'
+    elif data_type == 'delta':
+        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Delta.txt'
+    elif data_type == 'infraslow':
+        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Infraslow.txt'
     elif data_type == 'hr':
-        f_str = f'data/dataset_chang/physio_hr/sub_00{subj}-mr_{scan_str}-ecr_echo1_hr.mat'
+        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_PPG_RATE_NK.txt'
     elif data_type == 'rv':
-        f_str = f'data/dataset_chang/physio_rv/sub_00{subj}-mr_{scan_str}-ecr_echo1_rv.mat'
+        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_RESP_AMP_HILBERT.txt'
     elif data_type == 'csf':
-        f_str = f'data/dataset_chang/physio_csf/raw/sub_00{subj}_mr_{scan_str}.txt'
+        f_str = f'data/dataset_chang/physio/raw_csf/sub_00{subj}_mr_{scan_str}.txt'
+    elif data_type == 'vigilance':
+        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_vigilance.txt'
+    elif data_type == 'pc1':
+        f_str = f'data/dataset_chang/physio/proc2_physio_pc/sub_00{subj}-mr_{scan_str}_PC1_angle.txt'
+    elif data_type == 'pc2':
+        f_str = f'data/dataset_chang/physio/proc2_physio_pc/sub_00{subj}-mr_{scan_str}_PC2_angle.txt'
+    elif data_type == 'pc3':
+        f_str = f'data/dataset_chang/physio/proc2_physio_pc/sub_00{subj}-mr_{scan_str}_PC3_angle.txt'
     return f_str
 
 
@@ -83,21 +95,23 @@ def fp_hcp(data_type, subj, scan):
     if data_type == 'func':
         f_str = f'data/dataset_hcp/func/proc3_filter_norm/{subj}_{scan}1_rest.nii.gz'
     elif data_type == 'rv':
-        f_str = f'data/dataset_hcp/physio/proc1_hr_rv/{subj}_{scan}1_physio_rv.txt'
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_VAR_W.txt'
     elif data_type == 'hr':
-        f_str = f'data/dataset_hcp/physio/proc1_hr_rv/{subj}_{scan}1_physio_hr.txt'
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_PPG_HR_W.txt'
     return f_str
 
 
 def fp_lemon(data_type, subj):
     if data_type == 'func':
-        f_str = f'data/dataset_lemon/func/proc5_filter_norm/{subj}_task_rest.nii.gz'
+        f_str = f'data/dataset_lemon/func/proc6_trim/{subj}_task_rest.nii.gz'
     elif data_type == 'rv':
         f_str = f'data/dataset_lemon/physio/proc1_physio/{subj}_physio_RESP_VAR_W.txt'
     elif data_type == 'hr':
         f_str = f'data/dataset_lemon/physio/proc1_physio/{subj}_physio_ECG_HR_NK.txt'
     elif data_type == 'map':
         f_str = f'data/dataset_lemon/physio/proc1_physio/{subj}_physio_MAP_W.txt'
+    elif data_type == 'csf':
+        f_str =f'data/dataset_lemon/physio/proc1_physio/{subj}_physio_csf.txt'
     return f_str
 
 
@@ -105,9 +119,11 @@ def fp_nki(data_type, subj):
     if data_type == 'func':
         f_str = f'data/dataset_nki/func/proc5_filter_norm/{subj}_task_breathhold.nii.gz'
     elif data_type == 'hr':
-        f_str = f'data/dataset_nki/physio/proc1_hr_rv/{subj}_task_breathhold_physio_hr.txt'
+        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_hr.txt'
     elif data_type == 'rv':
-        f_str = f'data/dataset_nki/physio/proc1_hr_rv/{subj}_task_breathhold_physio_rv.txt'
+        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_rv.txt'
+    elif data_type == 'csf':
+        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_csf.txt'
     return f_str
 
 

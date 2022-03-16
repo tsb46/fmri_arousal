@@ -13,7 +13,7 @@ from scipy.stats import zscore
 # path to the analysis parameter .json file. Never move this out of the base directory!
 params_fp='analysis_params.json'
 # path to 3mm dilated brain mask file. Never move this out of the masks directory!
-mask_fp = 'masks/MNI152_T1_3mm_brain_mask_dilated2.nii.gz'
+mask_fp = 'masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz'
 
 
 def convert_2d(mask, nifti_data):
@@ -22,7 +22,8 @@ def convert_2d(mask, nifti_data):
 	return nifti_2d.T
 
 
-def filter_zero_voxels(nifti_data, group_method):
+def filter_zero_voxels(nifti_data, group_method, use_first=True):
+	# use_first = whether to use first subject as estimate of nan voxels, greatly speeds concatenation
 	# Construct mask of vertices with std greater than 0
 	if group_method == 'stack':
 		orig_n_vert = nifti_data.shape[1]
@@ -31,10 +32,13 @@ def filter_zero_voxels(nifti_data, group_method):
 		return nifti_data[:, zero_mask], zero_mask_indx, orig_n_vert
 	elif group_method == 'list':
 		orig_n_vert = nifti_data[0].shape[1]
-		std_vec = np.zeros(orig_n_vert)
-		for n in nifti_data:
-			std_vec += (np.std(n, axis=0) > 0)
-		zero_mask = (std_vec == len(nifti_data))
+		if use_first:
+			zero_mask = np.std(nifti_data[0], axis=0) > 0
+		else: 
+			std_vec = np.zeros(orig_n_vert)		
+			for n in nifti_data:
+				std_vec += (np.std(n, axis=0) > 0)
+			zero_mask = (std_vec == len(nifti_data))
 		zero_mask_indx = np.where(zero_mask)[0]
 		for i, n in enumerate(nifti_data):
 			nifti_data[i] = n[:, zero_mask]
@@ -47,8 +51,17 @@ def impute_zero_voxels(nifti_data, zero_mask, orig_n_vert):
 	return nifti_full
 
 
+def initialize_group_func_array(fp, nscans, mask_n):
+	nifti = nb.load(fp)
+	n_t = nifti.header['dim'][4]
+	n_len = int(n_t*nscans)
+	group_func_array = np.zeros((n_len, mask_n))
+	return group_func_array, n_t
+
+
 def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, 
-              events=False, group_method='stack', verbose=True, filter_nan_voxels=True):
+              events=False, group_method='stack', physio_group_method='stack', 
+              verbose=True, filter_nan_voxels=True):
 	params = load_params()
 
 	# Pull physio labels (if not already selected)
@@ -76,14 +89,14 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None,
 			print(f'Loading subject: {subj_n}')
 		func_data = load_subject_func(fps['func'][0], mask, params_data)
 		# If load subject and group method = list, place in list for downstream compatibility
-		if group_method == 'list':
+		if physio_group_method == 'list':
 			func_data = [func_data]
 		# If load physio option is specified, load and preprocess physio
 		if load_physio:
 			physio_proc = []
 			for p in physio:
 				p_proc = load_subject_physio(fps[p][0], params_data, data, p)
-				if group_method == 'list':
+				if physio_group_method == 'list':
 					p_proc = [p_proc]
 				physio_proc.append(p_proc)
 		else:
@@ -92,11 +105,11 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None,
 	elif level == 'group':
 		if verbose:
 			print('Loading all subjects')
-		func_data = load_group_func(fps['func'], mask, params_data, group_method)
+		func_data = load_group_func(fps['func'], mask, params_data, group_method, verbose)
 		if load_physio:
 			physio_proc = []
 			for p in physio:
-				p_proc = load_group_physio(fps[p], params_data, data, p, group_method)
+				p_proc = load_group_physio(fps[p], params_data, data, p, physio_group_method)
 				physio_proc.append(p_proc)
 		else:
 			physio_proc = None
@@ -130,18 +143,29 @@ def load_events(fps, level, data, group_method):
 		else:
 			return group_events
 
-def load_group_func(fps, mask, params, group_method):
-	group_data = []
+
+def load_group_func(fps, mask, params, group_method, verbose):
+	if group_method == 'stack':
+		mask_n = len(np.nonzero(mask)[0])
+		indx=0
+		group_data, n_t = initialize_group_func_array(fps[0], params['nscans'], mask_n) 
+	elif group_method == 'list':
+		group_data = []
+	# Loop through files and concatenate/append
 	for fp in fps:
+		if verbose:
+			print(fp)
 		subj_data = load_subject_func(fp, mask, params)
 		# Normalize data before concatenation
 		subj_data = zscore(subj_data)
-		group_data.append(subj_data)
+		if group_method == 'stack':
+			group_data[indx:(indx+n_t), :] = subj_data
+			indx += n_t
+		elif group_method == 'list':
+			group_data.append(subj_data)
 
-	if group_method == 'stack':
-		return np.concatenate(group_data)
-	elif group_method == 'list':
-		return group_data
+	return group_data
+
 
 
 def load_group_physio(fps, params, data, physio_label, group_method):
@@ -175,7 +199,7 @@ def load_params():
 
 def load_subject_func(fp, mask, params):
 	# Load scan
-	nifti = nb.load(fp)
+	nifti = nb.load(fp, keep_file_open = True)
 	nifti_data = nifti.get_fdata()
 	nifti.uncache()
 	nifti_data = convert_2d(mask, nifti_data)
@@ -185,16 +209,9 @@ def load_subject_func(fp, mask, params):
 
 def load_subject_physio(fp, params, data, physio_label):	
 	# Load AND preprocess physio
-	if (data == 'chang') and (physio_label != 'csf'):
-		physio_signal = loadmat(fp)
-		if physio_label == 'eeg':
-			physio_signal = physio_signal['eeg_at'][:,0]
-		elif physio_label == 'rv':
-			physio_signal = physio_signal['rv'][:,0]
-		elif physio_label == 'hr':
-			physio_signal = physio_signal['hr'][:,0]
-	else:
-		physio_signal = np.loadtxt(fp)
+	physio_signal = np.loadtxt(fp)
+	if physio_signal.ndim == 1:
+		physio_signal = physio_signal[:, np.newaxis]
 	physio_signal_proc = preprocess_physio(physio_signal, params, physio_label)
 	return physio_signal_proc
 
