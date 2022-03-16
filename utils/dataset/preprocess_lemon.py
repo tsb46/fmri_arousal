@@ -78,14 +78,17 @@ def load_physio(subj):
     return physio_signals
 
 
-def run_main(subj, output_physio):
+def run_main(subj, trim, output_physio):
     # Load physio data
     physio_signals = load_physio(subj)
     ppg_map_df, ecg_resp_df = process_physio(physio_signals)
-    write_output(ppg_map_df, ecg_resp_df, output_physio)
+    write_output(ppg_map_df, ecg_resp_df, output_physio, trim)
 
 
-def write_output(ppg_map_df, ecg_resp_df, output_physio):
+def write_output(ppg_map_df, ecg_resp_df, output_physio, trim):
+    if trim:
+        ecg_resp_df = ecg_resp_df.iloc[:n_sub, :]
+
     ppg_map_df.to_csv(f'{output_physio}_map_ppg.csv', index=False)
     ecg_resp_df.to_csv(f'{output_physio}_ecg_resp.csv', index=False)
     for col in ppg_map_df.columns:
@@ -101,10 +104,16 @@ if __name__ == '__main__':
                         help='<Required> subject number in LEMON dataset',
                         required=True,
                         type=str)
+    parser.add_argument('-t', '--trim_data',
+                        help='whether to trim ECG and RESP data to PPG and BP data length (470)',
+                        required=False,
+                        default=1,
+                        type=int)
     parser.add_argument('-o', '--output_file_physio',
                         help='output file path for physio time courses',
                         required=False,
                         default=os.getcwd(),
                         type=str)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['subject'], args_dict['output_file_physio'])
+    run_main(args_dict['subject'], args_dict['trim_data'], 
+             args_dict['output_file_physio'])

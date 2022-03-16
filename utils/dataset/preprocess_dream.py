@@ -5,14 +5,13 @@ import numpy as np
 import pandas as pd
 import sys
 
-from scipy.signal import resample
+# from mne.filter import resample as mne_resample
+from scipy.signal import resample, hilbert
 from scipy.stats import zscore
 from utils.signal.butterworth_filters import butterworth_filter
-from utils.electrophys_utils import compute_rvt, eeg_band_amplitudes, \
-extract_ecg_signals, extract_resp_signals, \
-extract_rr_interval, extract_rsa, find_interpolate_spikes, \
-extract_ppg_signals, extract_emg_signals
-
+from utils.electrophys_utils import eeg_band_amplitudes, \
+nk_extract_physio, filt_resample_physio_to_func, \
+reject_amplitude
 
 
 # global variables
@@ -33,8 +32,6 @@ band_freqs = [
     ('Delta', 1, 3),
     ('Theta', 4, 7),
     ('Alpha', 8, 12),
-    ('Beta', 13, 25),
-    ('Gamma', 30, 45)
 ]
 
 # eeg channels
@@ -77,98 +74,97 @@ physio_labels = ['ECG', 'VTOT', 'NAF2P-A1',
                  'NAF1', 'VTH', 'VAB', 'SAO2', 
                  'EMG1', 'EMG2', 'EMG3']
 
+# EMG measures
+emg_cols = ['EMG1', 'EMG2', 'EMG3']
+
 # respiration measures
 resp_measures = ['VTOT', 'VTH', 'VAB', 'NAF1', 'NAF2P-A1']
 
 # emg measures
 emg_measures = ['EMG1', 'EMG2', 'EMG3']
 
+# Sampling frequency of EEG
+sf_eeg = 200
 
-def extract_eeg_bands(eeg):
-    eeg_freq = eeg.copy()
-    eeg_freq.pick(eeg_chan)
+# Resample frequency
+sf_resample = 30
+
+
+def compute_vigilance_index(eeg_df, low_rng=(1,7), high_rng=(8,12)):
+    low_amp_all = []
+    high_amp_all = []
+    for chan in eeg_chan:
+        low_sig = butterworth_filter(eeg_df[chan], low_rng[0], low_rng[1], sf_resample, 'bandpass')
+        low_amp = np.abs(hilbert(low_sig))
+        low_amp_all.append(low_amp)
+
+        high_sig = butterworth_filter(eeg_df[chan], high_rng[0], high_rng[1], sf_resample, 'bandpass')
+        high_amp = np.abs(hilbert(high_sig))
+        high_amp_all.append(high_amp)
+    low_amp_avg = np.mean(low_amp_all, axis=0)
+    high_amp_avg = np.mean(high_amp_all, axis=0)
+
+    return high_amp_avg/low_amp_avg
+
+
+
+def eeg_preprocess(eeg):
+    eeg_sleep = eeg.copy()
+    eeg_sleep.pick(eeg_chan)
     # Free up memory
     del eeg
-    slow_wave_freq = band_freqs.pop(0)
-    eeg_bands = eeg_band_amplitudes(eeg_freq, band_freqs)
-    slow_wave_band = eeg_band_amplitudes(eeg_freq, [slow_wave_freq], l_trans=0.3, h_trans=0.3)[0]
-    eeg_bands.insert(0, slow_wave_band)
-    band_freqs.insert(0, slow_wave_freq)
-    sleep_events, _ = mne.events_from_annotations(eeg_freq, chunk_duration=5, 
+    # Create sleep stage annotations
+    sleep_events, _ = mne.events_from_annotations(eeg_sleep, chunk_duration=5, 
                                                   event_id=annotation_desc_2_event_id, 
                                                   verbose=False)
-    tmax = 5 - 1. / eeg_freq.info['sfreq']  # tmax in included
-    # Free up memory
-    del eeg_freq
-    bands_ts = []
-    band_labels = [b[0] for b in band_freqs]
-    for i, (band, band_label) in enumerate(zip(eeg_bands, band_labels)):
-        # Apply low-pass to frequency range of interest
-        band.filter(None, 0.15)
-        # Resample to 10 Hz
-        band, sleep_events_d = band.resample(10, events=sleep_events)
-        band_epochs = mne.Epochs(raw=band.copy(), events=sleep_events_d,
-                                 tmin=0., tmax=tmax, 
-                                 baseline=None, verbose=False)
-        eeg_df = band_epochs.to_data_frame()
-        if i > 0:
-            eeg_df.drop(columns=['time', 'condition'], inplace=True)
+    tmax = 5 - 1. / eeg_sleep.info['sfreq']  # tmax in included
+    # Identify high movement epochs
+    print('identify high motion epochs...')
+    reject_indx = reject_high_motion_epochs(eeg_sleep.copy(), sleep_events, tmax)
 
-        eeg_rename = {e: f'{e}-{band_label}' for e in eeg_chan}
-        eeg_df.rename(columns=eeg_rename, inplace=True)
-        bands_ts.append(eeg_df)
+    # Epoch eeg based on sleep stages
+    eeg_sleep, sleep_events_d = eeg_sleep.resample(sf_resample, events=sleep_events)
+    eeg_sleep = mne.Epochs(raw=eeg_sleep.copy(), events=sleep_events_d,
+                             tmin=0., tmax=tmax, reject=None,
+                             baseline=None, verbose=False)
+    eeg_df = eeg_sleep.to_data_frame()
+    eeg_df = eeg_df.merge(reject_indx, right_on='epoch', left_on='epoch', how='left')
 
-    bands_df = pd.concat(bands_ts, axis=1)
-
-    return bands_df
+    return eeg_df
 
 
 def process_physio(physio_dict, eeg_downsample_len):
-    # Get ECG signal
-    ecg = physio_dict['ECG']
-    # Preprocess ECG signals from ECG
-    ecg_signals = extract_ecg_signals(ecg, 200)
-    # Extract interbeat interval
-    rr_interval_ecg = extract_rr_interval(ecg_signals, 200, 'ecg')
+
+    ## ECG signal
+    # Neurokit physio signal extraction
+    ecg_signals = nk_extract_physio(physio_dict['ECG'], 'ecg', sf_eeg, 
+                                    eeg_downsample_len, lowpass=None)
 
     # Preprocess EMG signals
     emg_df_all = []
     for i, measure in enumerate(emg_measures):
-        emg_signals = extract_emg_signals(physio_dict[measure], 200)
-        # emg_labels = ['EMG_Amplitude', 'EMG_Onsets', 'EMG_Offsets']
-        # emg_labels_measure = {label: f'{label}_{measure}' for label in emg_labels}
-        # emg_df = emg_signals[emg_labels].copy()
-        # emg_df.rename(columns=emg_labels_measure, inplace=True)
-        emg_df = pd.DataFrame({measure: emg_signals})
-        emg_df_all.append(emg_df)
+        emg_signals = nk_extract_physio(physio_dict[measure], 'emg', sf_eeg, 
+                                        eeg_downsample_len, lowpass=None)        
+        emg_signals.rename(columns={'EMG_AMP': measure}, inplace=True)
+        emg_df_all.append(emg_signals)
+
+    emg_df_all = pd.concat(emg_df_all, axis=1)
 
     # Preprocess Resp signals
     resp_df_all = []
     for i, measure in enumerate(resp_measures):
-        resp_signals = extract_resp_signals(physio_dict[measure], 200)
-        # Calculate Respiration volume per time
-        resp_signals['RVT'] = compute_rvt(resp_signals)
-        # Calculate RSA signal
-        resp_signals['RSA'] = extract_rsa(ecg_signals, resp_signals)
-        # Create one physio df
-        resp_labels = ['RVT', 'RSA', 'RSP_Rate', 'RSP_Amplitude']
-        resp_labels_measure = {label: f'{label}_{measure}' for label in resp_labels}
-        resp_df = resp_signals[resp_labels].copy()
-        resp_df.rename(columns = resp_labels_measure, inplace=True)
-        resp_df_all.append(resp_df)
+        resp_signals = nk_extract_physio(physio_dict[measure], 'resp', sf_eeg, 
+                                         eeg_downsample_len, lowpass=None)
+        cols_select = ['RSP_Amplitude', 'RSP_Clean', 'RSP_Rate', 'RSP_RVT', 'RSP_AMP_HILBERT', 'RSP_RV']
+        resp_signals = resp_signals[cols_select].copy()
+        cols_m = {col: f'{col}_{measure}' for col in resp_signals.columns}
+        resp_signals.rename(columns=cols_m, inplace=True)
+        resp_df_all.append(resp_signals)
 
-    physio_df = pd.concat(resp_df_all + emg_df_all, axis=1)
-    physio_df['RR_Interval_ECG'] = rr_interval_ecg
-    # Low pass physio signals below 0.15Hz (same as EEG) and downsample to EEG frequency (5Hz)
-    physio = []
-    for col in physio_df.columns:
-        # cleaned_signal = find_interpolate_spikes(physio_df[col].values)
-        filtered_signal = butterworth_filter(physio_df[col], None, 
-                                             0.15, 200, 'lowpass')
-        downsampled_signal = resample(filtered_signal, eeg_downsample_len)
-        physio.append(downsampled_signal)
+    resp_df_all = pd.concat(resp_df_all, axis=1)
 
-    physio_df = pd.DataFrame(np.array(physio).T, columns = physio_df.columns)
+    physio_df = pd.concat([resp_df_all, emg_df_all, ecg_signals], axis=1)
+
     return physio_df
 
 
@@ -187,6 +183,19 @@ def load_hypnogram(hypno_file):
     return annot
 
 
+def reject_high_motion_epochs(eeg, sleep_events, tmax, epoch_resample=100):
+    # Epoch eeg based on sleep stages
+    eeg_epoch, sleep_events_d = eeg.resample(epoch_resample, events=sleep_events)
+    eeg_epoch = mne.Epochs(raw=eeg_epoch.copy(), events=sleep_events_d,
+                             tmin=0., tmax=tmax, reject=None,
+                             baseline=None, verbose=False)
+    epoch_df = eeg_epoch.to_data_frame()
+    eeg_ts = [epoch_df[chan] for chan in eeg_chan]
+    epoch_df['reject'] = reject_amplitude(eeg_ts, epoch_df['epoch'], epoch_resample)
+    reject_indx = epoch_df.groupby('epoch')['reject'].apply(lambda x: (x > 0).any()).reset_index()
+    return reject_indx
+
+
 def regress_eyeblinks(eeg_raw):
     eeg_proc, _ = mne.preprocessing.regress_artifact(eeg_raw, picks=eeg_chan, 
                                                      picks_artifact=['EOG1', 'EOG2'], 
@@ -195,8 +204,10 @@ def regress_eyeblinks(eeg_raw):
 
 
 def run_main(poly_file, hypno_file, output_eeg, output_physio):
-    # Load polysomnography and hypynogram
+    # Load polysomnography 
+    print('load eeg data...')
     eeg = load_edf(poly_file)
+    # Load Hypnogram
     annot = load_hypnogram(hypno_file)
     # Set annotations
     eeg.set_annotations(annot)
@@ -209,14 +220,18 @@ def run_main(poly_file, hypno_file, output_eeg, output_physio):
     # Free up memory
     del physio_data
     # Extract EEG band amplitudes
-    band_df = extract_eeg_bands(eeg)
+    print('preprocess eeg data...')
+    eeg_df = eeg_preprocess(eeg)
+    print('compute vigilance index')
+    eeg_df['vigilance'] = compute_vigilance_index(eeg_df)
     # Preprocess physio data
-    physio_df = process_physio(physio_signals, band_df.shape[0])
-    write_output(band_df, physio_df, output_eeg, output_physio)
+    print('preprocess physio data...')
+    physio_df = process_physio(physio_signals, eeg_df.shape[0])
+    write_output(eeg_df, physio_df, output_eeg, output_physio)
 
 
-def write_output(band_df, physio_df, output_eeg, output_physio):
-    band_df.to_csv(output_eeg, index=False)
+def write_output(eeg_df, physio_df, output_eeg, output_physio):
+    eeg_df.to_csv(output_eeg, index=False)
     physio_df.to_csv(f'{output_physio}', index=False)
 
     
