@@ -3,7 +3,7 @@ import pandas as pd
 
 from patsy import dmatrix
 from scipy.stats import gamma, zscore
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 
 
 def construct_design_matrix(model_formula, df, omit_intercept=True):
@@ -29,6 +29,14 @@ def create_interaction_maps(beta_s1, beta_i,
     return np.array(beta_simple)
 
 
+def create_quadratic_maps(beta_s1, beta_quad, 
+                          plot_rng=[-4,-3,-2,-1,0,1,2,3,4]):
+    # We ASSUME that the variables have been z-scored, so that a value of 1 represents 1 std. above the mean
+    # Calculate the effect of V1 (beta_s1) at different levels of V2 (beta_s2)
+    beta_simple = [beta_s1 + s1_val*beta_quad for s1_val in plot_rng]
+    return np.array(beta_simple)
+
+
 def get_hrf(t, tr, type):
     t_steps = np.arange(0, t, tr)
     if type == 'canonical':
@@ -47,9 +55,22 @@ def get_interaction_map(interaction_map_str, design_cols, subj_beta_maps):
         i_index = design_cols.tolist().index(interaction_map_str)
     v1v2 = interaction_map_str
     v1_i, v2_i = parse_interaction_string(v1v2)
-    # Remember, the beta maps are ordered according to the order of the columns in the design_mat dataframe
+    # Remember, the beta maps are ordered according to  the order of the columns in the design_mat dataframe
     avg_beta_inter = np.mean([bmap[i_index] for bmap in subj_beta_maps], axis=0) 
     return avg_beta_inter, v1_i, v2_i
+
+
+def get_quadratic_map(quadratic_map_str, design_cols, subj_beta_maps):
+    design_cols_strip = [col.replace(' ', '') for col in design_cols]
+    if quadratic_map_str not in design_cols_strip:
+            raise Exception('Quadratic string specified for option -q does not match any string in model formula')
+    else:
+        i_index = design_cols_strip.index(quadratic_map_str)
+    quad_term = quadratic_map_str
+    simple_var = parse_quadratic_string(quad_term)
+    # Remember, the beta maps are ordered according to the order of the columns in the design_mat dataframe
+    avg_beta_quad = np.mean([bmap[i_index] for bmap in subj_beta_maps], axis=0) 
+    return avg_beta_quad, simple_var
 
 
 def hrf_double_gamma(t, dip=0.35):
@@ -104,18 +125,27 @@ def lag_and_convolve_physio(physio_signals, physio_labels, n_subj, time_lag, con
     return physio_sig_proc
 
 
-def linear_regression(design_mat, func_data, labels, norm=True):
+def linear_regression(design_mat, func_data, labels=None, return_model=False, 
+                      intercept=True, norm=True, reg=None):
     if norm:
         func_data = zscore(func_data)
         design_mat = zscore(design_mat)
     # Simple OLS - no mixed/multilevel model
-    lin_reg = LinearRegression()
+    if reg == 'ridge':
+        lin_reg = Ridge(fit_intercept=intercept, solver='lsqr')
+    else:
+        lin_reg = LinearRegression(fit_intercept=intercept)
     lin_reg.fit(design_mat, func_data)
-    betas = []
-    for l in labels:
-        l_indx = np.where(lin_reg.feature_names_in_ == l)[0][0]
-        betas.append(lin_reg.coef_[:, l_indx])
-    return betas
+    if return_model:
+        return lin_reg
+    elif labels is not None:
+        betas = []
+        for l in labels:
+            l_indx = np.where(lin_reg.feature_names_in_ == l)[0][0]
+            betas.append(lin_reg.coef_[:, l_indx])
+        return betas
+    else:
+        raise Exception('labels must be provided, if fitted model is not returned')
 
 
 def mask_voxels(func_data):
@@ -136,7 +166,16 @@ def onsets_to_block(df, scan_len, tr):
     return block_ts
 
 
+def parse_quadratic_string(q_str):
+    # parse interaction string from patsy model formula
+    var = q_str.split('(')[1].split('**')[0]
+    return var
+
+
 def parse_interaction_string(i_str):
     # parse interaction string from patsy model formula
     v1, v2 = i_str.split(':')
     return v1, v2
+
+
+
