@@ -35,9 +35,12 @@ def pca(input_data, n_comps, n_iter=10):
 
 def rotation(pca_output, data, rotation):
     if rotation == 'varimax':
-        rotated_weights, _ = varimax(pca_output['loadings'].T)
+        rotated_weights, r_mat = varimax(pca_output['loadings'].T)
+        pca_output['r_mat'] = r_mat
     elif rotation == 'promax':
-        rotated_weights, _, _ = promax(pca_output['loadings'].T)
+        rotated_weights, r_mat, phi_mat = promax(pca_output['loadings'].T)
+        pca_output['r_mat'] = r_mat
+        pca_output['phi_mat'] = phi_mat
     # https://stats.stackexchange.com/questions/59213/how-to-compute-varimax-rotated-principal-components-in-r
     projected_scores = data @ pinv(rotated_weights).T
     pca_output['loadings'] = rotated_weights.T
@@ -72,15 +75,16 @@ def write_results(dataset, level, pca_output, pca_type, comp_weights,
     pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
 
 
-def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate):
+def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate, regress_global_sig):
     func_data, _, _, zero_mask, n_vert, _ = load_data(dataset, level, physio=None, load_physio=False, 
-                                                subj_n=subj_n, scan_n=scan_n) 
+                                                subj_n=subj_n, scan_n=scan_n, regress_global=regress_global_sig) 
     # If specified, center along rows
     if center == 'r':
         func_data -= func_data.mean(axis=1, keepdims=True)
     if pca_type == 'complex':
+        print('hilbert')
         func_data = hilbert_transform(func_data)
-
+    print('pca')
     pca_output = pca(func_data, n_comps)
 
     if rotate is not None:
@@ -132,8 +136,14 @@ if __name__ == '__main__':
                         required=False,
                         choices=['varimax', 'promax'],
                         type=str)
+    parser.add_argument('-g', '--regress_global_sig',
+                        help='Whether to regress out global signal from functional data',
+                        default=0,
+                        required=False,
+                        type=int)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['n_comps'], 
              args_dict['level'], args_dict['subject_n'], 
              args_dict['scan_n'], args_dict['pca_type'], 
-             args_dict['center'], args_dict['rotate'])
+             args_dict['center'], args_dict['rotate'], 
+             args_dict['regress_global_sig'])
