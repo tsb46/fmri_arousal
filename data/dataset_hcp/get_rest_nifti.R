@@ -8,10 +8,13 @@ subjects <- subject_data$subject
 
 func_output_dir = 'func/raw'
 physio_output_dir = 'physio/raw'
+anat_output_dir = 'anat/raw_fs_seg'
 dir.create(file.path(func_output_dir), recursive=TRUE, showWarnings = FALSE)
 dir.create(file.path(physio_output_dir), recursive=TRUE, showWarnings = FALSE)
+dir.create(file.path(anat_output_dir), recursive=TRUE, showWarnings = FALSE)
 
-# Loop through subjects and pull physio and func data
+
+# Loop through subjects and pull physio, func and segmentation data
 for (n in 1:length(subjects)) {
   i = subjects[n]
   print(paste(n,': ',i))
@@ -23,5 +26,6 @@ for (n in 1:length(subjects)) {
     download_hcp_file(paste("HCP_1200/",i,"/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR.nii.gz",sep=""), destfile = paste(func_output_dir,'/',i,"_LR1_rest.nii.gz", sep = ""), error=FALSE)
     download_hcp_file(paste("HCP_1200/",i,"/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR_Physio_log.txt",sep=""), destfile = paste(physio_output_dir,'/',i,"_LR1_physio.txt", sep = ""), error=FALSE)
   }
+  download_hcp_file(paste("HCP_1200/",i,"/MNINonLinear/aparc.a2009s+aseg.nii.gz",sep=""), destfile = paste(anat_output_dir,'/',i,"_fsseg.nii.gz", sep = ""), error=FALSE)
 }
 
