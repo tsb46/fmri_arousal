@@ -160,8 +160,8 @@ def mask_voxels(func_data):
 def onsets_to_block(df, scan_len, tr):
     block_ts = np.zeros(scan_len)
     for onset, dur in zip(df.onset, df.duration):
-        tr_event = int(np.round(onset/tr))
-        tr_dur = int(np.round(dur))
+        tr_event = int(np.floor(onset/tr))
+        tr_dur = int(np.ceil(dur/tr))
         block_ts[tr_event:(tr_event+tr_dur)] = 1
     return block_ts
 

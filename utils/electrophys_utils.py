@@ -128,12 +128,27 @@ def nk_extract_emg_signals(ts, sf):
     return emg_df
 
 
-def nk_extract_ppg_signals(ts, sf):
+def nk_extract_ppg_signals(ts, sf, w=6):
     # Process PPG signal
     # Extract R-peaks and heart rate from PPG
     # Clean PPG signal
     ppg_signals, ppg_info = nk.ppg_process(ts, sampling_rate=sf)
-    return ppg_signals[['PPG_Rate']]
+    # Band-pass filter to 0.01 - 0.1Hz
+    ppg_signals['PPG_LOW'] = butterworth_filter(ts, 0.01, 0.1, sf, 'bandpass')
+    # PPG RMS Amplitude (window of 6s)
+    window = int(sf*6)
+    ts_series = pd.Series(ts)
+    ppg_signals['PPG_RMS_AMP'] = \
+    ts_series.rolling(window).apply(
+        lambda x: np.sqrt(np.mean(np.sum(x**2))), raw=True)
+    ppg_signals['PPG_RMS_AMP'] = ppg_signals['PPG_RMS_AMP'].fillna(ppg_signals['PPG_RMS_AMP'].median())
+    ## PPG Peak Amplitude
+    ppg_peaks_loc = np.where(ppg_signals['PPG_Peaks'])[0]
+    ppg_peaks_amp = np.abs(ppg_signals['PPG_Clean'].iloc[ppg_peaks_loc])
+    ppg_signals['PPG_PEAK_AMP'] = nk.signal_interpolate(ppg_peaks_loc, ppg_peaks_amp.values, 
+                                                        np.arange(ppg_signals.shape[0]), 
+                                                        method='cubic')
+    return ppg_signals[['PPG_Rate', 'PPG_LOW', 'PPG_RMS_AMP', 'PPG_PEAK_AMP']]
 
 
 def nk_extract_resp_signals(ts, sf):

@@ -73,7 +73,7 @@ def promax(A, power=4, maxIter=1000, tol=1e-8):
     A : array-like
         PCs to be rotated. Matrix A has shape n x p with (n: number of time steps; p: number of pcs)
     power : int, optional
-        Power the Varimax rotated solution to be raised to. If 1, Promax equals Varimax. The default is 1.
+        Power the Varimax rotated solution to be raised to. If 1, Promax equals Varimax. The default is 4.
     Returns
     -------
     B : array-like

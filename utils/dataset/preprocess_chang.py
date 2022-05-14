@@ -56,12 +56,13 @@ def construct_mne_obj(eeg_mat, subj, output_mne=None):
     return eeg_resamp
 
 
-def compute_vigilance_rms(eeg, sf, window_s=2, alpha_indx=2, delta_indx=0):
+def compute_vigilance_rms(eeg, sf, window_s=2, alpha_indx=2, theta_indx=1, delta_indx=0):
     # 2 second window
     win= window_s*sf
     # Freq ranges 
     delta_l, delta_h = band_freqs[delta_indx][1], band_freqs[delta_indx][2]
     alpha_l, alpha_h = band_freqs[alpha_indx][1], band_freqs[alpha_indx][2]
+    theta_l, theta_h = band_freqs[theta_indx][1], band_freqs[theta_indx][2]
     # Filter to theta range
     eeg_freq = eeg.copy()
     eeg_freq.filter(delta_l, delta_h, l_trans_bandwidth=1, h_trans_bandwidth=1)
@@ -70,13 +71,23 @@ def compute_vigilance_rms(eeg, sf, window_s=2, alpha_indx=2, delta_indx=0):
     eeg_freq = eeg.copy()
     eeg_freq.filter(alpha_l, alpha_h, l_trans_bandwidth=1, h_trans_bandwidth=1)
     alpha = eeg_freq.get_data()
+    # Filter to theta range
+    eeg_freq = eeg.copy()
+    eeg_freq.filter(theta_l, theta_h, l_trans_bandwidth=1, h_trans_bandwidth=1)
+    theta = eeg_freq.get_data()
     # Create temporary dataframe to use Pandas rolling function
-    df = pd.DataFrame({'delta': np.mean(delta, axis=0), 'alpha': np.mean(alpha, axis=0)})
-    # Calculate vigilance
+    df = pd.DataFrame({
+                       'delta': np.mean(delta, axis=0), 
+                       'alpha': np.mean(alpha, axis=0), 
+                       'theta': np.mean(theta, axis=0)
+                       })
+    # Calculate vigilance by alpha/theta and alpha/delta
     alpha_rolling_rms = df.rolling(win)['alpha'].apply(lambda x: np.sqrt(np.sum(x**2)), raw=True)
     delta_rolling_rms = df.rolling(win)['delta'].apply(lambda x: np.sqrt(np.sum(x**2)), raw=True)
-    vigilance = alpha_rolling_rms/delta_rolling_rms
-    return vigilance.fillna(0)
+    theta_rolling_rms = df.rolling(win)['theta'].apply(lambda x: np.sqrt(np.sum(x**2)), raw=True)
+    vigilance_ad = alpha_rolling_rms/delta_rolling_rms
+    vigilance_at = alpha_rolling_rms/theta_rolling_rms
+    return vigilance_ad.fillna(0), vigilance_at.fillna(0)
 
 
 def extract_eeg_bands(eeg, sf_resamp, func_len):
@@ -88,8 +99,9 @@ def extract_eeg_bands(eeg, sf_resamp, func_len):
     # Extract EEG Bands
     eeg_bands = eeg_band_amplitudes(eeg_freq, band_freqs, l_trans='auto', h_trans='auto')
     # Compute vigilance index
-    vigilance = compute_vigilance_rms(eeg_freq, sf_resamp)
-    vigilance_resamp = filt_resample_physio_to_func(vigilance, high_cut=0.15, func_len=func_len, sf=sf_resamp)
+    vigilance_ad, vigilance_at = compute_vigilance_rms(eeg_freq, sf_resamp)
+    vigilance_ad_resamp = filt_resample_physio_to_func(vigilance_ad, high_cut=0.15, func_len=func_len, sf=sf_resamp)
+    vigilance_at_resamp = filt_resample_physio_to_func(vigilance_at, high_cut=0.15, func_len=func_len, sf=sf_resamp)
     # Get infraslow component (needs an extra downsampling step before filtering)
     infraslow = filter_infraslow(eeg_freq)
     infraslow_resamp = filt_resample_physio_to_func(infraslow, high_cut=0.15, func_len=func_len, sf=2)
@@ -107,7 +119,8 @@ def extract_eeg_bands(eeg, sf_resamp, func_len):
         bands_ts.append(eeg_avg)
 
     bands_df = pd.concat(bands_ts, axis=1)
-    bands_df['vigilance'] = vigilance_resamp
+    bands_df['vigilance_ad'] = vigilance_ad_resamp
+    bands_df['vigilance_at'] = vigilance_at_resamp
     bands_df['Infraslow'] = infraslow_resamp
     return bands_df
 
@@ -147,9 +160,11 @@ def process_physio(physio_dict, sf_resamp, func_len):
     physio_list = [ecg_signals_nk['ECG_Rate'].values.tolist(), resp_signals_nk['RSP_Rate'].values.tolist(), 
                    resp_signals_nk['RSP_Amplitude'].values.tolist(),resp_signals_nk['RSP_RVT'].values.tolist(), 
                    resp_signals_nk['RSP_AMP_HILBERT'].values.tolist(), resp_signals_nk['RSP_RV'],
-                   resp_signals_window, ppg_signals_nk['PPG_Rate'].values.tolist(), ppg_signals_window] 
+                   resp_signals_window, ppg_signals_nk['PPG_Rate'].values.tolist(), ppg_signals_window,
+                   ppg_signals_nk['PPG_LOW'].values.tolist(), ppg_signals_nk['PPG_RMS_AMP'].values.tolist(),
+                   ppg_signals_nk['PPG_PEAK_AMP'].values.tolist()] 
     physio_labels = ['ECG_HR_NK', 'RESP_RATE_NK', 'RESP_AMP_NK', 'RESP_RVT_NK', 'RESP_AMP_HILBERT', 'RSP_RV', 
-                     'RESP_VAR_W', 'PPG_RATE_NK', 'PPG_RATE_W']
+                     'RESP_VAR_W', 'PPG_RATE_NK', 'PPG_RATE_W', 'PPG_LOW_NK', 'PPG_RMS_AMP', 'PPG_PEAK_AMP']
     physio_df = pd.DataFrame({label: col for label, col in zip(physio_labels, physio_list)})
 
     return physio_df
@@ -173,7 +188,10 @@ def load_physio_mat(eeg_mat_physio, sf_physio_resamp):
     physio_resamp_n = int(physio_secs * sf_physio_resamp)
     physio = {l: nk.signal_resample(physio[l], desired_length=physio_resamp_n, method='FFT') 
               for l in physio.keys()}
-    return physio
+    # Trim off first 14.7s to align w/ functional (first 7 TRs were trimmed from functional)
+    trim_n = int(100*14.7)
+    physio_trim = {l: physio[l][trim_n:] for l in physio.keys()}
+    return physio_trim
 
 
 def run_main(eeg_mat_fp, physio_mat_fp, func_len, output_mne, output_eeg, output_physio):
