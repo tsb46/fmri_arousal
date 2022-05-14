@@ -1,7 +1,8 @@
 
 { "chang": {
 		"tr": 2.1,
-		"physio": ["vigilance", "hr", "rv", "csf", "alpha", "delta", "infraslow", "pc1", "pc2", "pc3"],
+		"physio": ["vigilance", "hr", "rv", "csf", "alpha", "delta", "infraslow", "ppg_low", 
+			"precuneus", "superior_parietal", "global_sig"],
 		"nscans": 15,
 		"data": { 
 			"func": {
@@ -30,16 +31,17 @@
 						"alpha": "bandpass",
 						"delta": "bandpass",
 						"infraslow": "raw",
-						"pc1": "raw",
-						"pc2": "raw",
-						"pc3": "raw"
+						"ppg_low": "raw",
+						"precuneus": "raw",
+						"superior_parietal": "raw",
+						"global_sig": "highpass"
 					},
 					"bandpass" : {
 						"low": 0.01,
 						"high": 0.1	
 					},
 					"lowpass": {
-						"high": 0.01
+						"high": 0.1
 					},
 					"highpass": {
 						"low": 0.01
@@ -59,7 +61,7 @@
 	"nki": {
 		"tr": 1.4,
 		"physio": ["rv", "hr", "csf"],
-		"nscans": 51,
+		"nscans": 50,
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -82,7 +84,8 @@
 					"filter_choice": {
 						"hr": "bandpass",
 						"rv": "bandpass",
-						"csf": "bandpass"
+						"csf": "bandpass",
+						"global_sig": "highpass"
 					},
 					"bandpass" : {
 						"low": 0.01,
@@ -156,12 +159,12 @@
 	},
 	"hcp": {
 		"tr": 0.72,
-		"physio": ["rv", "hr"],
-		"nscans": 25,
+		"physio": ["rv", "hr", "ppg_low", "precuneus", "superior_parietal", "global_sig"],
+		"nscans": 15,
 		"data": { 
 			"func": {
 				"filter_params": {
-					"filter_choice": "bandpass",
+					"filter_choice": "raw",
 					"bandpass" : {
 						"low": 0.01,
 						"high": 0.1	
@@ -179,7 +182,11 @@
 				"filter_params": {
 					"filter_choice": {
 						"hr": "bandpass",
-						"rv": "bandpass"
+						"rv": "bandpass",
+						"ppg_low": "raw",
+						"precuneus": "raw",
+						"superior_parietal": "raw",
+						"global_sig": "highpass"
 					},
 					"bandpass" : {
 						"low": 0.01,
