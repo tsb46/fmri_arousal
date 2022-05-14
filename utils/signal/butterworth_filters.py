@@ -81,5 +81,6 @@ def filter_functional_data(func_data, params):
 		lowcut = None
 		highcut = None
 	func_data = butterworth_filter(func_data, lowcut, highcut, 
-	                               fs, params['data']['func']['filter_params']['filter_choice'])
+	                               fs, params['data']['func']['filter_params']['filter_choice'],
+	                               npad=100)
 	return func_data

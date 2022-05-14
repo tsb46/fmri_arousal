@@ -6,7 +6,7 @@ import pandas as pd
 subject_list_chang = 'data/dataset_chang/subject_list_chang.csv'
 subject_list_yale = 'data/dataset_yale/subject_list_yale_subset.csv'
 subject_list_nki = 'data/dataset_nki/subject_list_nki.csv'
-subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_subset_test.csv'
+subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_subset_subset.csv'
 subject_list_lemon = 'data/dataset_lemon/subject_list_lemon.csv'
 
 
@@ -82,22 +82,33 @@ def fp_chang(data_type, subj, scan):
         f_str = f'data/dataset_chang/physio/raw_csf/sub_00{subj}_mr_{scan_str}.txt'
     elif data_type == 'vigilance':
         f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_vigilance.txt'
-    elif data_type == 'pc1':
-        f_str = f'data/dataset_chang/physio/proc2_physio_pc/sub_00{subj}-mr_{scan_str}_PC1_angle.txt'
-    elif data_type == 'pc2':
-        f_str = f'data/dataset_chang/physio/proc2_physio_pc/sub_00{subj}-mr_{scan_str}_PC2_angle.txt'
-    elif data_type == 'pc3':
-        f_str = f'data/dataset_chang/physio/proc2_physio_pc/sub_00{subj}-mr_{scan_str}_PC3_angle.txt'
+    elif data_type == 'ppg_low':
+        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_PPG_LOW_NK.txt'
+    elif data_type == 'precuneus':
+        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_precuneus.txt'
+    elif data_type == 'superior_parietal':
+        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_superior_parietal.txt'
+    elif data_type == 'global_sig':
+        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_global_sig.txt'
+
     return f_str
 
 
 def fp_hcp(data_type, subj, scan):
     if data_type == 'func':
-        f_str = f'data/dataset_hcp/func/proc3_filter_norm/{subj}_{scan}1_rest.nii.gz'
+        f_str = f'data/dataset_hcp/func/proc4_bandpass/{subj}_{scan}1_rest.nii.gz'
     elif data_type == 'rv':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_VAR_W.txt'
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_AMP_HILBERT.txt'
     elif data_type == 'hr':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_PPG_HR_W.txt'
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_PPG_HR_NK.txt'
+    elif data_type == 'ppg_low':
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_PPG_LOW_NK.txt'
+    elif data_type == 'precuneus':
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_precuneus.txt'
+    elif data_type == 'superior_parietal':
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_superior_parietal.txt'
+    elif data_type == 'global_sig':
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_global_sig.txt'
     return f_str
 
 
@@ -119,9 +130,9 @@ def fp_nki(data_type, subj):
     if data_type == 'func':
         f_str = f'data/dataset_nki/func/proc5_filter_norm/{subj}_task_breathhold.nii.gz'
     elif data_type == 'hr':
-        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_hr.txt'
+        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_PPG_HR_NK.txt'
     elif data_type == 'rv':
-        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_rv.txt'
+        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_RESP_AMP_HILBERT.txt'
     elif data_type == 'csf':
         f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_csf.txt'
     return f_str
