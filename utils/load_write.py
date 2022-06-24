@@ -52,12 +52,19 @@ def impute_zero_voxels(nifti_data, zero_mask, orig_n_vert):
     return nifti_full
 
 
-def initialize_group_func_array(fp, nscans, mask_n):
-    nifti = nb.load(fp)
-    n_t = nifti.header['dim'][4]
-    n_len = int(n_t*nscans)
-    group_func_array = np.zeros((n_len, mask_n))
-    return group_func_array, n_t
+def initialize_group_func_array(fps, nscans, mask_n):
+    n_t = 0
+    for fp in fps:
+        nifti = nb.load(fp)
+        n_t += nifti.header['dim'][4]
+    group_func_array = np.zeros((n_t, mask_n))
+    return group_func_array
+
+
+def load_chang_bh_event_file():
+    # We are ASSUMING that the event timings are the same across all subjects 
+    events = np.loadtxt(f'data/dataset_chang_bh/adb_onsets.txt')
+    return events
 
 
 def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, 
@@ -66,7 +73,12 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None,
     params = load_params()
 
     # Pull physio labels (if not already selected)
-    params_data = params[data]
+    if data == 'hcp_fix':
+        data_str = 'hcp'
+    else:
+        data_str = data
+    
+    params_data = params[data_str]
     if physio is None:
         physio = params_data['physio']
 
@@ -152,7 +164,7 @@ def load_group_func(fps, mask, params, group_method, regress_global, verbose):
     if group_method == 'stack':
         mask_n = len(np.nonzero(mask)[0])
         indx=0
-        group_data, n_t = initialize_group_func_array(fps[0], params['nscans'], mask_n) 
+        group_data = initialize_group_func_array(fps, params['nscans'], mask_n) 
     elif group_method == 'list':
         group_data = []
     # Loop through files and concatenate/append
@@ -160,11 +172,12 @@ def load_group_func(fps, mask, params, group_method, regress_global, verbose):
         if verbose:
             print(fp)
         subj_data = load_subject_func(fp, mask, params, regress_global)
+        subj_t = subj_data.shape[0]
         # Normalize data before concatenation
         subj_data = zscore(subj_data)
         if group_method == 'stack':
-            group_data[indx:(indx+n_t), :] = subj_data
-            indx += n_t
+            group_data[indx:(indx+subj_t), :] = subj_data
+            indx += subj_t
         elif group_method == 'list':
             group_data.append(subj_data)
 
