@@ -18,7 +18,6 @@ def ica(input_data, n_comps):
 def write_results(dataset, ica_type, spatial_map, ica_ts, zero_mask, n_vert):
     analysis_str = f'{dataset}_ica_{ica_type}_group'
     pickle.dump([spatial_map, ica_ts], open(f'{analysis_str}_results.pkl', 'wb'))
-    breakpoint()
     write_nifti(spatial_map, f'{analysis_str}', zero_mask, n_vert)
 
 
@@ -49,7 +48,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run ICA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp', 'lemon'], 
+                        choices=['chang', 'nki', 'yale', 'hcp', 'hcp_fix'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',
