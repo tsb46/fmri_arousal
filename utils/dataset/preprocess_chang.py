@@ -53,6 +53,8 @@ def construct_mne_obj(eeg_mat, subj, output_mne=None):
     eeg_resamp = eeg_raw.copy().resample(sf_resamp)
     if output_mne is not None:
         eeg_resamp.save(f'{output_mne}.raw.fif', overwrite=True)
+    # Trim off first 14.7s to align w/ functional (first 7 TRs were trimmed from functional)
+    eeg_resamp.crop(tmin=14.7)
     return eeg_resamp
 
 
@@ -189,7 +191,7 @@ def load_physio_mat(eeg_mat_physio, sf_physio_resamp):
     physio = {l: nk.signal_resample(physio[l], desired_length=physio_resamp_n, method='FFT') 
               for l in physio.keys()}
     # Trim off first 14.7s to align w/ functional (first 7 TRs were trimmed from functional)
-    trim_n = int(100*14.7)
+    trim_n = int(sf_physio_resamp*14.7)
     physio_trim = {l: physio[l][trim_n:] for l in physio.keys()}
     return physio_trim
 
