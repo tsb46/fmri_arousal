@@ -92,7 +92,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run Physio GLM w/ Time-lag Spline Regressors')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp', 'lemon'], 
+                        choices=['chang', 'nki', 'yale', 'hcp', 'hcp_fix'], 
                         required=True,
                         type=str)
     parser.add_argument('-p', '--physio',

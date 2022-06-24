@@ -67,6 +67,8 @@ def write_results(dataset, level, pca_output, pca_type, comp_weights,
         comp_weights_real = np.real(comp_weights)
         comp_weights_imag = np.imag(comp_weights)
         comp_weights_ang = np.angle(comp_weights)
+        comp_weights_abs = np.abs(comp_weights)
+        write_nifti(comp_weights_abs, f'{analysis_str}_magnitude', zero_mask, n_vert)
         write_nifti(comp_weights_real, f'{analysis_str}_real', zero_mask, n_vert)
         write_nifti(comp_weights_imag, f'{analysis_str}_imag', zero_mask, n_vert)
         write_nifti(comp_weights_ang, f'{analysis_str}_ang', zero_mask, n_vert)        
@@ -83,6 +85,8 @@ def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate, 
         func_data -= func_data.mean(axis=1, keepdims=True)
     if pca_type == 'complex':
         print('hilbert')
+        # Hack to get HCP data through analysis without memory error
+        func_data = np.single(func_data)
         func_data = hilbert_transform(func_data)
     print('pca')
     pca_output = pca(func_data, n_comps)
@@ -100,7 +104,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run PCA or CPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp', 'lemon'], 
+                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',
