@@ -134,9 +134,9 @@ data/dataset_chang/*/
 data/dataset_yale/*/
 data/dataset_nki/*/
 data/dataset_hcp/*/
-data/dataset_lemon/*/
-data/dataset_eke/*/
-data/dataset_dream/*/
+data/dataset_chang_bh/*/
+data/dataset_monash/*/
+
 
 external/*
 

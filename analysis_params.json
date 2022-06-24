@@ -34,6 +34,55 @@
 						"ppg_low": "raw",
 						"precuneus": "raw",
 						"superior_parietal": "raw",
+						"global_sig": "bandpass"
+					},
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			}
+		}
+	},
+	"chang_bh": {
+		"tr": 2.1,
+		"physio": ["vigilance", "hr", "rv", "csf", "alpha", "delta", "infraslow", "ppg_low", 
+			"global_sig"],
+		"nscans": 8,
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"concat_method": "zscore",
+				"filter_params": {
+					"filter_choice": {
+						"vigilance": "lowpass",
+						"hr": "bandpass",
+						"rv": "bandpass",
+						"csf": "bandpass",
+						"alpha": "bandpass",
+						"delta": "bandpass",
+						"infraslow": "raw",
+						"ppg_low": "raw",
 						"global_sig": "highpass"
 					},
 					"bandpass" : {
@@ -45,14 +94,6 @@
 					},
 					"highpass": {
 						"low": 0.01
-					},
-					"despike": 0,
-					"despike_params" : {
-						"widths": 3,
-						"min_snr": 2,
-						"noise_perc": 5,
-						"window_size": 100,
-						"interpolation_window": [2,2]
 					}
 				}
 			}
@@ -96,14 +137,6 @@
 					},
 					"highpass": {
 						"low": 0.01
-					},
-					"despike": 0,
-					"despike_params" : {
-						"widths": 3,
-						"min_snr": 2,
-						"noise_perc": 5,
-						"window_size": 100,
-						"interpolation_window": [2,2]
 					}
 				}
 			}
@@ -144,14 +177,6 @@
 					},
 					"highpass": {
 						"low": 0.01
-					},
-					"despike": 1,
-					"despike_params" : {
-						"widths": 3,
-						"min_snr": 2,
-						"noise_perc": 5,
-						"window_size": 100,
-						"interpolation_window": [2,2]
 					}
 				}
 			}
@@ -197,65 +222,6 @@
 					},
 					"highpass": {
 						"low": 0.01
-					},
-					"despike": 0,
-					"despike_params" : {
-						"widths": 3,
-						"min_snr": 2,
-						"noise_perc": 5,
-						"window_size": 100,
-						"interpolation_window": [2,2]
-					}
-				}
-			}
-		}
-	},
-	"lemon": {
-		"tr": 1.4,
-		"physio": ["hr", "rv", "map", "csf"],
-		"nscans": 19,
-		"data": { 
-			"func": {
-				"filter_params": {
-					"filter_choice": "bandpass",
-					"bandpass" : {
-						"low": 0.01,
-						"high": 0.1	
-					},
-					"lowpass": {
-						"high": 0.1
-					},
-					"highpass": {
-						"low": 0.01
-					}
-				}
-			},
-			"physio": {
-				"concat_method": "zscore",
-				"filter_params": {
-					"filter_choice": {
-						"rv": "bandpass",
-						"hr": "bandpass",
-						"map": "bandpass",
-						"csf": "bandpass"
-					},
-					"bandpass" : {
-						"low": 0.01,
-						"high": 0.1	
-					},
-					"lowpass": {
-						"high": 0.01
-					},
-					"highpass": {
-						"low": 0.01
-					},
-					"despike": 1,
-					"despike_params" : {
-						"widths": 3,
-						"min_snr": 2,
-						"noise_perc": 5,
-						"window_size": 100,
-						"interpolation_window": [2,2]
 					}
 				}
 			}

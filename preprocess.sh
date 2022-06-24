@@ -53,69 +53,69 @@ if [ "$dataset" == "chang" ]; then
     # fslmaths data/dataset_chang/anat/proc5_csfmask/group_csf_mask -mul masks/MNI152_T1_2mm_csf_mask \
     # data/dataset_chang/anat/proc5_csfmask/group_csf_mask
 
-    # mkdir -p data/dataset_chang/func/proc1_resample
-    # mkdir -p data/dataset_chang/func/proc2_smooth_mask
-    # mkdir -p data/dataset_chang/func/proc3_filter_norm
-    # mkdir -p data/dataset_chang/func/proc4_bandpass
+    mkdir -p data/dataset_chang/func/proc1_resample
+    mkdir -p data/dataset_chang/func/proc2_smooth_mask
+    mkdir -p data/dataset_chang/func/proc3_filter_norm
+    mkdir -p data/dataset_chang/func/proc4_bandpass
 
-    # echo "Functional preprocessing - post ME-ICA..."
-    # for file_path in data/dataset_chang/func/raw/*.nii.gz; do
-    #     filename=$(basename $file_path)
-    #     echo "$filename" 
-    #     # # Resample to 3mm
-    #     # flirt -in $file_path -ref $mask -out data/dataset_chang/func/proc1_resample/$filename -applyisoxfm 3
-    #     # # Mask
-    #     # fslmaths data/dataset_chang/func/proc1_resample/$filename -mul $mask data/dataset_chang/func/proc2_smooth_mask/$filename
-    #     # Lowpass filter (0.1Hz) and norm
-    #     python -m utils.signal.norm_filter -f data/dataset_chang/func/proc2_smooth_mask/$filename -m $mask \
-    #      -ch 0.1 -t 2.1 -o data/dataset_chang/func/proc3_filter_norm/$filename
-    #     # band pass filter (0.01-0.1Hz) and norm 
-    #     python -m utils.signal.norm_filter -f data/dataset_chang/func/proc2_smooth_mask/${filename} -m $mask \
-    #      -ch 0.1 -cl 0.01 -t 2.1 -o data/dataset_chang/func/proc4_bandpass/$filename
-    # done
-
-
-    mkdir -p data/dataset_chang/physio/proc1_physio
-    mkdir -p data/dataset_chang/physio/proc1_physio_highres
-    mkdir -p data/dataset_chang/eeg/proc1_fbands
-    mkdir -p data/dataset_chang/eeg/proc1_fbands_highres
-    echo "Physio preprocessing..."
+    echo "Functional preprocessing - post ME-ICA..."
     for file_path in data/dataset_chang/func/raw/*.nii.gz; do
         filename=$(basename $file_path)
         echo "$filename" 
-        # get base subject name to specify path to mask
-        subj_file=$(cut -d'-' -f1 <<< "${filename}")
-        sess_n=$(cut -d'-' -f2 <<< "${filename}")
-        filename_base=$(cut -d'.' -f1 <<< "${filename}")
-        subj_out=${subj_file}_${sess_n}
-        # Preprocess EEG and Physio Data
-        python -m utils.dataset.preprocess_chang -e data/dataset_chang/eeg/raw/${subj_file}-${sess_n}_eeg_pp.mat \
-        -p data/dataset_chang/physio/raw/${subj_file}-${sess_n}-ecr_echo1_physOUT.mat \
-         -f 693 -om data/dataset_chang/eeg/raw/${subj_out} \
-         -oe data/dataset_chang/eeg/proc1_fbands/${subj_out}_fbands \
-         -op data/dataset_chang/physio/proc1_physio/${subj_out}_physio 
-    #      # Preprocess EEG and Physio Data (high-res: 5Hz)
-    #     # python -m utils.dataset.preprocess_chang_highres -e data/dataset_chang/eeg/raw/${subj_file}-${sess_n}_eeg_pp.mat \
-    #     # -p data/dataset_chang/physio/raw/${subj_file}-${sess_n}-ecr_echo1_physOUT.mat \
-    #     #  -oe data/dataset_chang/eeg/proc1_fbands_highres/${subj_out}_fbands \
-    #     #  -op data/dataset_chang/physio/proc1_physio_highres/${subj_out}_physio 
-    #     # Extract global BOLD signal from preprocessed low-pass functional data
-    #     # fslmeants -i data/dataset_chang/func/proc3_filter_norm/${filename}\
-    #     # -o data/dataset_chang/physio/proc1_physio/${subj_out}_global_sig.txt \
-    #     # -m masks/MNI152_T1_3mm_gray_mask.nii.gz
+        # Resample to 3mm
+        flirt -in $file_path -ref $mask -out data/dataset_chang/func/proc1_resample/$filename -applyisoxfm 3
+        # Mask
+        fslmaths data/dataset_chang/func/proc1_resample/$filename -mul $mask data/dataset_chang/func/proc2_smooth_mask/$filename
+        # Lowpass filter (0.1Hz) and norm
+        python -m utils.signal.norm_filter -f data/dataset_chang/func/proc2_smooth_mask/$filename -m $mask \
+         -ch 0.1 -t 2.1 -o data/dataset_chang/func/proc3_filter_norm/$filename
+        # band pass filter (0.01-0.1Hz) and norm 
+        python -m utils.signal.norm_filter -f data/dataset_chang/func/proc2_smooth_mask/${filename} -m $mask \
+         -ch 0.1 -cl 0.01 -t 2.1 -o data/dataset_chang/func/proc4_bandpass/$filename
+    done
+
+
+    # mkdir -p data/dataset_chang/physio/proc1_physio
+    # mkdir -p data/dataset_chang/physio/proc1_physio_highres
+    # mkdir -p data/dataset_chang/eeg/proc1_fbands
+    # mkdir -p data/dataset_chang/eeg/proc1_fbands_highres
+    # echo "Physio preprocessing..."
+    # for file_path in data/dataset_chang/func/raw/*.nii.gz; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename" 
+    #     # get base subject name to specify path to mask
+    #     subj_file=$(cut -d'-' -f1 <<< "${filename}")
+    #     sess_n=$(cut -d'-' -f2 <<< "${filename}")
+    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
+    #     subj_out=${subj_file}_${sess_n}
+        # # Preprocess EEG and Physio Data
+        # python -m utils.dataset.preprocess_chang -e data/dataset_chang/eeg/raw/${subj_file}-${sess_n}_eeg_pp.mat \
+        # -p data/dataset_chang/physio/raw/${subj_file}-${sess_n}-ecr_echo1_physOUT.mat \
+        #  -f 693 -om data/dataset_chang/eeg/raw/${subj_out} \
+        #  -oe data/dataset_chang/eeg/proc1_fbands/${subj_out}_fbands \
+        #  -op data/dataset_chang/physio/proc1_physio/${subj_out}_physio 
+         # Preprocess EEG and Physio Data (high-res: 5Hz)
+        # python -m utils.dataset.preprocess_chang_highres -e data/dataset_chang/eeg/raw/${subj_file}-${sess_n}_eeg_pp.mat \
+        # -p data/dataset_chang/physio/raw/${subj_file}-${sess_n}-ecr_echo1_physOUT.mat \
+        #  -oe data/dataset_chang/eeg/proc1_fbands_highres/${subj_out}_fbands \
+        #  -op data/dataset_chang/physio/proc1_physio_highres/${subj_out}_physio 
+        # Extract global BOLD signal from smoothed functional data
+        # fslmeants -i data/dataset_chang/func/proc2_smooth_mask/${filename}\
+        # -o data/dataset_chang/physio/proc1_physio/${subj_out}_global_sig.txt \
+        # -m masks/MNI152_T1_3mm_gray_mask.nii.gz
         # # Extract CSF signal from raw functional data (pre-ME-ICA)
         # fslmeants -i data/dataset_chang/func/raw/$filename \
         # -o data/dataset_chang/physio/proc1_physio/${subj_out}_csf.txt \
         # -m data/dataset_chang/anat/proc5_csfmask/group_csf_mask
-    #     # # Extract precuneus BOLD signal from preprocessed band-pass functional data
-    #     # fslmeants -i data/dataset_chang/func/proc4_bandpass/${filename}\
-    #     # -o data/dataset_chang/physio/proc1_physio/${subj_out}_precuneus.txt \
-    #     # -m masks/precuneus_sphere_6mm.nii.gz
-    #     # # Extract superior parietal BOLD signal from preprocessed band-pass functional data
-    #     # fslmeants -i data/dataset_chang/func/proc4_bandpass/${filename}\
-    #     # -o data/dataset_chang/physio/proc1_physio/${subj_out}_superior_parietal.txt \
-    #     # -m masks/superior_parietal_sphere_6mm.nii.gz
-    done
+        # # Extract precuneus BOLD signal from preprocessed band-pass functional data
+        # fslmeants -i data/dataset_chang/func/proc4_bandpass/${filename}\
+        # -o data/dataset_chang/physio/proc1_physio/${subj_out}_precuneus.txt \
+        # -m masks/precuneus_sphere_6mm.nii.gz
+        # # Extract superior parietal BOLD signal from preprocessed band-pass functional data
+        # fslmeants -i data/dataset_chang/func/proc4_bandpass/${filename}\
+        # -o data/dataset_chang/physio/proc1_physio/${subj_out}_superior_parietal.txt \
+        # -m masks/superior_parietal_sphere_6mm.nii.gz
+    # done
 fi
 
 
@@ -126,7 +126,7 @@ if [ "$dataset" == "yale" ]; then
     mkdir -p data/dataset_yale/anat/proc3_fnirt
 
     echo "Structural preprocessing..."
-    Structural preprocessing
+    # Structural preprocessing
     for file_path in data/dataset_yale/anat/raw/*.nii.gz; do
         filename=$(basename $file_path)
         echo "$filename"
@@ -180,6 +180,106 @@ if [ "$dataset" == "yale" ]; then
     done
 fi
 
+
+
+# Chang Breath Hold Task - EEG, FMRI, physio data for breath hold task
+if [ "$dataset" == "chang_bh" ]; then
+    # mkdir -p data/dataset_chang_bh/anat/proc1_reorient
+    # mkdir -p data/dataset_chang_bh/anat/proc2_bet
+    # mkdir -p data/dataset_chang_bh/anat/proc3_affine
+    # mkdir -p data/dataset_chang_bh/anat/proc4_fnirt
+    # mkdir -p data/dataset_chang_bh/anat/proc5_csfmask
+    # echo "Structural preprocessing..."
+    # for file_path in data/dataset_chang_bh/anat/raw/*.nii; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename"
+    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
+    #     subj_name=$(cut -d'-' -f1 <<< "${filename_base}")
+        # # Reorient to standard orientation
+        # fslreorient2std $file_path data/dataset_chang_bh/anat/proc1_reorient/$filename
+        # # Brain Extraction
+        # bet data/dataset_chang_bh/anat/proc1_reorient/$filename data/dataset_chang_bh/anat/proc2_bet/$filename -o -m
+        # # FAST segmentation
+        # fast data/dataset_chang_bh/anat/proc2_bet/$filename 
+        # # Affine registration
+        # flirt -in data/dataset_chang_bh/anat/proc2_bet/$filename -ref $FSLDIR/data/standard/MNI152_T1_2mm_brain.nii.gz \
+        # -out data/dataset_chang_bh/anat/proc3_affine/$filename -omat data/dataset_chang_bh/anat/proc3_affine/$filename.mat
+        # # Nonlinear transformation
+        # fnirt --ref=$FSLDIR/data/standard/MNI152_T1_2mm.nii.gz --in=data/dataset_chang_bh/anat/proc1_reorient/$filename \
+        # --iout=data/dataset_chang_bh/anat/proc4_fnirt/$filename --cout=data/dataset_chang_bh/anat/proc4_fnirt/$filename.mat \
+        # --aff=data/dataset_chang_bh/anat/proc3_affine/$filename.mat --config=T1_2_MNI152_2mm --warpres=6,6,6
+        # # Send CSF mask to MNI space
+        # applywarp --ref=$FSLDIR/data/standard/MNI152_T1_2mm.nii.gz --in=data/dataset_chang_bh/anat/proc2_bet/${subj_name}-anat_pve_0  \
+        # --out=data/dataset_chang_bh/anat/proc5_csfmask/$filename_base --warp="data/dataset_chang_bh/anat/proc4_fnirt/${subj_name}-anat.nii.mat.nii.gz" 
+        # # Binarize CSF mask
+        # fslmaths data/dataset_chang_bh/anat/proc5_csfmask/$filename_base -thr 0.9 -bin \
+        # data/dataset_chang_bh/anat/proc5_csfmask/$filename_base
+    # done
+
+    # # Create group CSF mask
+    # # Add together subject CSF masks in MNI space
+    # fslmaths data/dataset_chang_bh/anat/proc5_csfmask/sub_0015-anat.nii.gz -add data/dataset_chang_bh/anat/proc5_csfmask/sub_0017-anat.nii.gz \
+    # -add data/dataset_chang_bh/anat/proc5_csfmask/sub_0019-anat.nii.gz -add data/dataset_chang_bh/anat/proc5_csfmask/sub_0020-anat.nii.gz \
+    # -add data/dataset_chang_bh/anat/proc5_csfmask/sub_0021-anat.nii.gz data/dataset_chang_bh/anat/proc5_csfmask/group_csf_mask
+    # # Threshold to >4 subjects overlap in CSF masks
+    # fslmaths data/dataset_chang_bh/anat/proc5_csfmask/group_csf_mask -thr 4 -bin data/dataset_chang_bh/anat/proc5_csfmask/group_csf_mask
+    # # Mask by MNI prior probability CSF mask (thresholded)
+    # fslmaths data/dataset_chang_bh/anat/proc5_csfmask/group_csf_mask -mul masks/MNI152_T1_2mm_csf_mask \
+    # data/dataset_chang_bh/anat/proc5_csfmask/group_csf_mask
+
+    # mkdir -p data/dataset_chang_bh/func/proc1_resample
+    # mkdir -p data/dataset_chang_bh/func/proc2_smooth_mask
+    # mkdir -p data/dataset_chang_bh/func/proc3_filter_norm
+    # mkdir -p data/dataset_chang_bh/func/proc4_bandpass
+
+    # echo "Functional preprocessing - post ME-ICA..."
+    # for file_path in data/dataset_chang_bh/func/raw/*.nii.gz; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename" 
+    #     # Resample to 3mm
+    #     flirt -in $file_path -ref $mask -out data/dataset_chang_bh/func/proc1_resample/$filename -applyisoxfm 3
+    #     # Mask
+    #     fslmaths data/dataset_chang_bh/func/proc1_resample/$filename -mul $mask data/dataset_chang_bh/func/proc2_smooth_mask/$filename
+    #     # Lowpass filter (0.1Hz) and norm
+    #     python -m utils.signal.norm_filter -f data/dataset_chang_bh/func/proc2_smooth_mask/$filename -m $mask \
+    #      -ch 0.1 -t 2.1 -o data/dataset_chang_bh/func/proc3_filter_norm/$filename
+    #     # band pass filter (0.01-0.1Hz) and norm 
+    #     python -m utils.signal.norm_filter -f data/dataset_chang_bh/func/proc2_smooth_mask/${filename} -m $mask \
+    #      -ch 0.1 -cl 0.01 -t 2.1 -o data/dataset_chang_bh/func/proc4_bandpass/$filename
+    # done
+
+
+    mkdir -p data/dataset_chang_bh/physio/proc1_physio
+    mkdir -p data/dataset_chang_bh/eeg/proc1_fbands
+    # echo "Physio preprocessing..."
+    sed -n '2,$p' data/dataset_chang_bh/subject_list_chang_bh.csv | while IFS=, read -r subj scan nframes;
+    do 
+        if [[ $scan -gt 10 ]]
+        then
+          sess_n="mr_00${scan}"
+        else
+          sess_n="mr_000${scan}"
+        fi
+        subj_file="sub_00${subj}"
+        subj_out=${subj_file}_${sess_n}
+        echo "$subj_file $sess_n"
+        # Preprocess EEG and Physio Data
+        python -m utils.dataset.preprocess_chang \
+        -e data/dataset_chang_bh/eeg/raw/${subj_file}-${sess_n}-adb_echo1_EEG_pp.mat \
+        -p data/dataset_chang_bh/physio/raw/${subj_file}-${sess_n}-adb_echo1_physOUT.mat \
+         -f $nframes -om data/dataset_chang_bh/eeg/raw/${subj_out} \
+         -oe data/dataset_chang_bh/eeg/proc1_fbands/${subj_out}_fbands \
+         -op data/dataset_chang_bh/physio/proc1_physio/${subj_out}_physio  
+        # # Extract global BOLD signal from preprocessed low-pass functional data
+        # fslmeants -i data/dataset_chang_bh/func/proc3_filter_norm/${subj_file}-${sess_n}-adb_echo1_w_dspk_blur3mm \
+        # -o data/dataset_chang_bh/physio/proc1_physio/${subj_out}_global_sig.txt \
+        # -m masks/MNI152_T1_3mm_gray_mask.nii.gz
+        # # Extract CSF signal from raw functional data (pre-ME-ICA)
+        # fslmeants -i data/dataset_chang_bh/func/raw/${subj_file}-${sess_n}-adb_echo1_w_dspk_blur3mm  \
+        # -o data/dataset_chang_bh/physio/proc1_physio/${subj_out}_csf.txt \
+        # -m data/dataset_chang_bh/anat/proc5_csfmask/group_csf_mask
+    done
+fi
 
 # NKI - FMRI Breath-hold task
 if [ "$dataset" == "nki" ]; then
@@ -286,6 +386,7 @@ if [ "$dataset" == "nki" ]; then
         # -o data/dataset_nki/physio/proc1_physio/${subj_file}_task_breathhold_physio_csf.txt \
         # -m data/dataset_nki/anat/proc4_csfmask/group_csfmask
     done
+
 fi
 
 # HCP - FMRI, hr, rv
@@ -340,17 +441,15 @@ if [ "$dataset" == "hcp" ]; then
     # data/dataset_hcp/anat/proc1_csfmask/group_csfmask
 
 
-
     # mkdir -p data/dataset_hcp/func/proc1_resample
     # mkdir -p data/dataset_hcp/func/proc2_mask_smooth
     # mkdir -p data/dataset_hcp/func/proc3_filter_norm
     # mkdir -p data/dataset_hcp/func/proc4_bandpass
 
-    # echo "Functional preprocessing..."
+    # echo "Functional preprocessing for minimally preprocessed data..."
     # for file_path in data/dataset_hcp/func/raw/*.nii.gz; do
     #     filename=$(basename $file_path)
     #     echo "$filename" 
-
     #     # Resample to 3mm
     #     flirt -in $file_path -ref $mask -out data/dataset_hcp/func/proc1_resample/$filename -applyisoxfm 3
     #     # Mask and smooth
@@ -364,18 +463,40 @@ if [ "$dataset" == "hcp" ]; then
     #      -ch 0.1 -cl 0.01 -t 0.72 -o data/dataset_hcp/func/proc4_bandpass/$filename
     # done
 
-    mkdir -p data/dataset_hcp/physio/proc1_physio
-    echo "Physio preprocessing..."
-    for file_path in data/dataset_hcp/physio/raw/*.txt; do
+    mkdir -p data/dataset_hcp/func_fix/proc1_resample
+    mkdir -p data/dataset_hcp/func_fix/proc2_mask_smooth
+    mkdir -p data/dataset_hcp/func_fix/proc3_filter_norm
+    mkdir -p data/dataset_hcp/func_fix/proc4_bandpass
+
+    echo "Functional preprocessing for ICA-FIX data..."
+    for file_path in data/dataset_hcp/func_fix/raw/*.nii.gz; do
         filename=$(basename $file_path)
         echo "$filename" 
-        # get base subject name to specify path to structural scan
-        subj_file=$(cut -d'_' -f1 <<< "${filename}")
-        # subj_func=$(cut -d'_physio' -f1 <<< "${filename}")
-        subj_func=$(echo $filename | awk 'BEGIN {FS="_physio.txt" } ; { print $1 }')
+        # Resample to 3mm
+        flirt -in $file_path -ref $mask -out data/dataset_hcp/func_fix/proc1_resample/$filename -applyisoxfm 3
+        # Mask and smooth
+        fslmaths data/dataset_hcp/func_fix/proc1_resample/$filename -mul $mask -kernel gauss 2.123 \
+        -fmean data/dataset_hcp/func_fix/proc2_mask_smooth/$filename
+        # Lowpass filter (0.1Hz) and norm
+        python -m utils.signal.norm_filter -f data/dataset_hcp/func_fix/proc2_mask_smooth/$filename -m $mask \
+         -ch 0.1 -t 0.72 -o data/dataset_hcp/func_fix/proc3_filter_norm/$filename
+        # band pass filter (0.01-0.1Hz)
+        python -m utils.signal.norm_filter -f data/dataset_hcp/func_fix/proc2_mask_smooth/$filename -m $mask \
+         -ch 0.1 -cl 0.01 -t 0.72 -o data/dataset_hcp/func_fix/proc4_bandpass/$filename
+    done
 
-        # Physio extraction
-        python -m utils.dataset.preprocess_hcp -s $file_path -o data/dataset_hcp/physio/proc1_physio/${subj_file}_physio
+    # mkdir -p data/dataset_hcp/physio/proc1_physio
+    # echo "Physio preprocessing..."
+    # for file_path in data/dataset_hcp/physio/raw/*.txt; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename" 
+    #     # get base subject name to specify path to structural scan
+    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
+    #     # subj_func=$(cut -d'_physio' -f1 <<< "${filename}")
+    #     subj_func=$(echo $filename | awk 'BEGIN {FS="_physio.txt" } ; { print $1 }')
+
+    #     # Physio extraction
+    #     python -m utils.dataset.preprocess_hcp -s $file_path -o data/dataset_hcp/physio/proc1_physio/${subj_file}_physio
         # # Extract precuneus BOLD signal from preprocessed band-pass functional data
         # fslmeants -i data/dataset_hcp/func/proc4_bandpass/${subj_func}_rest.nii.gz\
         # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_precuneus.txt \
@@ -394,139 +515,11 @@ if [ "$dataset" == "hcp" ]; then
         # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_csf.txt \
         # -m data/dataset_hcp/anat/proc1_csfmask/group_csfmask
 
-    done
-
-
-fi
-
-
-# DREAM - EEG, physio
-if [ "$dataset" == "dream" ]; then
-    # Make directories
-    mkdir -p data/dataset_dream/eeg/proc1_fbands
-    mkdir -p data/dataset_dream/physio
-
-    echo "EEG and physio preprocessing..."
-
-    for file_path in data/dataset_dream/eeg/raw/*.edf; do
-        filename=$(basename $file_path)
-        echo "$filename" 
-        # get base subject name to specify path to structural scan
-        filename_base=$(cut -d'.' -f1 <<< "${filename}")
-        python -m utils.dataset.preprocess_dream -p "data/dataset_dream/eeg/raw/${filename_base}.edf" \
-         -g "data/dataset_dream/hypnogram_rk/HypnogramR&K_${filename_base}.txt" \
-        -oe data/dataset_dream/eeg/proc1_fbands/${filename_base}.csv \
-        -op data/dataset_dream/physio/${filename_base}.csv
-    done 
-    
-fi
-
-# EKE - TCD, fNIRS, physio
-if [ "$dataset" == "eke" ]; then
-    # Make directories
-    mkdir -p data/dataset_eke/data/preprocessed
-    echo "Physio preprocessing..."
-    sed 1d data/dataset_eke/subject_list_eke.csv | while IFS=, read -r subject extra
-    do
-        echo $subject
-        # Preprocess EEG and physio
-        python -m utils.dataset.preprocess_eke -d "data/dataset_eke/data/orig/subj0${subject}.csv" \
-        -c "data/dataset_eke/data/orig/subj0${subject}.marker.csv" \
-        -o "data/dataset_eke/data/preprocessed/subj0${subject}.csv"
-    done 
-fi
-
-# LEMON - fMRI, hr, rv, bpp
-if [ "$dataset" == "lemon" ]; then
-
-    # mkdir -p data/dataset_lemon/anat/proc1A_masks
-    # mkdir -p data/dataset_lemon/anat/proc1B_masked
-    # mkdir -p data/dataset_lemon/anat/proc2_crop
-    # mkdir -p data/dataset_lemon/anat/proc3_bet
-    # mkdir -p data/dataset_lemon/anat/proc4_affine
-    # mkdir -p data/dataset_lemon/anat/proc5_fnirt
-
-    # echo "Structural preprocessing..."
-    # # Structural preprocessing
-    # for file_path in data/dataset_lemon/anat/raw/*T1w.nii.gz; do
-    #     filename=$(basename $file_path)
-    #     # get base subject name to specify path to structural scan
-    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
-    #     echo "$subj_file"
-    #     # Mask inverse mprage image
-    #     fslmaths data/dataset_lemon/anat/raw/${subj_file}_inv2 -thrP 5 -bin -fillh data/dataset_lemon/anat/proc1A_masks/${subj_file}_mask
-    #     # Apply mask to T1w images
-    #     fslmaths data/dataset_lemon/anat/raw/$filename -mul data/dataset_lemon/anat/proc1A_masks/${subj_file}_mask \
-    #     data/dataset_lemon/anat/proc1B_masked/$filename
-    #     # Robust fov
-    #     robustfov -i data/dataset_lemon/anat/proc1B_masked/$filename -r data/dataset_lemon/anat/proc2_crop/$filename 
-    #     # Brain Extraction of inverse mprage image
-    #     bet data/dataset_lemon/anat/proc2_crop/$filename data/dataset_lemon/anat/proc3_bet/$filename -o -m -f 0.25 -B
-    #     # Affine registration
-    #     flirt -in data/dataset_lemon/anat/proc3_bet/$filename -ref $FSLDIR/data/standard/MNI152_T1_2mm_brain.nii.gz \
-    #     -out data/dataset_lemon/anat/proc4_affine/$filename -omat data/dataset_lemon/anat/proc4_affine/$filename.mat
-    #     # Nonlinear transformation
-    #     fnirt --ref=$FSLDIR/data/standard/MNI152_T1_2mm.nii.gz --in=data/dataset_lemon/anat/proc2_crop/$filename \
-    #     --iout=data/dataset_lemon/anat/proc5_fnirt/$filename --cout=data/dataset_lemon/anat/proc5_fnirt/$filename.mat \
-    #     --aff=data/dataset_lemon/anat/proc4_affine/$filename.mat --config=T1_2_MNI152_2mm --warpres=6,6,6
     # done
 
-    # mkdir -p data/dataset_lemon/func/proc1_mcflirt
-    # mkdir -p data/dataset_lemon/func/proc2A_firstvolume
-    # mkdir -p data/dataset_lemon/func/proc2B_func2struct
-    # mkdir -p data/dataset_lemon/func/proc3_standard
-    # mkdir -p data/dataset_lemon/func/proc4_mask_smooth
-    # mkdir -p data/dataset_lemon/func/proc5_filter_norm
-    # mkdir -p data/dataset_lemon/func/proc6_trim
 
-    # echo "Functional preprocessing..."
-    # for file_path in data/dataset_lemon/func/raw/*.nii.gz; do
-    #     filename=$(basename $file_path)
-    #     echo "$filename" 
-    #     # get base subject name to specify path to structural scan
-    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
-    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
-        # # Motion correction (re-alignment)
-        # mcflirt -in $file_path -out data/dataset_lemon/func/proc1_mcflirt/$filename -plots
-        # # Select first volume from each functional
-        # fslroi data/dataset_lemon/func/proc1_mcflirt/$filename data/dataset_lemon/func/proc2A_firstvolume/$filename 0 1
-        # # # Co-registration with structural
-        # epi_reg --epi=data/dataset_lemon/func/proc2A_firstvolume/$filename \
-        # --t1="data/dataset_lemon/anat/proc2_crop/${subj_file}_T1w" --t1brain="data/dataset_lemon/anat/proc3_bet/${subj_file}_T1w" \
-        # --out=data/dataset_lemon/func/proc2B_func2struct/$filename
-        # # Get transform file to send functional to MNI
-        # applywarp --ref=masks/MNI152_T1_3mm_brain.nii.gz --in=data/dataset_lemon/func/proc1_mcflirt/$filename \
-        # --out=data/dataset_lemon/func/proc3_standard/$filename --warp="data/dataset_lemon/anat/proc5_fnirt/${subj_file}_T1w.nii.gz.mat.nii.gz" \
-        # --premat="data/dataset_lemon/func/proc2B_func2struct/${filename_base}.mat" 
-        # # Mask
-        # fslmaths data/dataset_lemon/func/proc3_standard/$filename -mul $mask -kernel gauss 2.123 \
-        # -fmean data/dataset_lemon/func/proc4_mask_smooth/$filename
-        # # low filter (0.1Hz) and norm
-        # python -m utils.signal.norm_filter -f data/dataset_lemon/func/proc4_mask_smooth/$filename -m $mask \
-        #  -ch 0.1 -t 1.4 -o data/dataset_lemon/func/proc5_filter_norm/$filename
-        #  # trim time series (it seems PPG and BP only extend to 470 TRs)
-        #  python -m utils.signal.trim -f data/dataset_lemon/func/proc5_filter_norm/$filename -n 0 -n_end 470 \
-        #  -o data/dataset_lemon/func/proc6_trim/$filename
-    # done
-
-    mkdir -p data/dataset_lemon/physio/proc1_physio
-    echo "Physio preprocessing..."
-    for file_path in data/dataset_lemon/anat/raw/*_T1w.nii.gz; do
-        filename=$(basename $file_path) 
-        # get base subject name to specify path to physio filesd
-        subj_file=$(cut -d'_' -f1 <<< "${filename}")
-        echo "$subj_file"        
-        # # preprocess physio files (func time samples = 657)
-        # python -m utils.dataset.preprocess_lemon -s $subj_file -t 1 -o data/dataset_lemon/physio/proc1_physio/${subj_file}_physio
-        ## Extract CSF inflow signals
-        # First trim time points of raw data to match trimmed preprocessed data (470 TRs) - remember, FSL index begins at zero
-        fslroi data/dataset_lemon/func/raw/${subj_file}_task_rest data/dataset_lemon/func/raw/raw_trim 0 470
-        # Extract time series from manually defined csf masks
-        fslmeants -i data/dataset_lemon/func/raw/raw_trim -o data/dataset_lemon/physio/proc1_physio/${subj_file}_physio_csf.txt \
-        -m data/dataset_lemon/func/inflow_mask/${subj_file}_task_rest_mask
-        # remove trimmed file
-        rm data/dataset_lemon/func/raw/raw_trim.nii.gz
-    done
-    
 fi
+
+
+
 
