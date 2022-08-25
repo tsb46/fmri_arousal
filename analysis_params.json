@@ -4,6 +4,7 @@
 		"physio": ["vigilance", "hr", "rv", "csf", "alpha", "delta", "infraslow", "ppg_low", 
 			"precuneus", "superior_parietal", "global_sig"],
 		"nscans": 15,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -55,6 +56,7 @@
 		"physio": ["vigilance", "hr", "rv", "csf", "alpha", "delta", "infraslow", "ppg_low", 
 			"global_sig"],
 		"nscans": 8,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -103,6 +105,7 @@
 		"tr": 1.4,
 		"physio": ["rv", "hr", "csf"],
 		"nscans": 50,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -142,50 +145,11 @@
 			}
 		}
 	},
-	"yale": {
-		"tr": 1,
-		"physio": ["pupil"],
-		"nscans": 24,
-		"data": { 
-			"func": {
-				"filter_params": {
-					"filter_choice": "bandpass",
-					"bandpass" : {
-						"low": 0.01,
-						"high": 0.1	
-					},
-					"lowpass": {
-						"high": 0.1
-					},
-					"highpass": {
-						"low": 0.01
-					}
-				}
-			},
-			"physio": {
-				"concat_method": "zscore",
-				"filter_params": {
-					"filter_choice": {
-						"pupil": "bandpass"
-					},
-					"bandpass" : {
-						"low": 0.01,
-						"high": 0.1	
-					},
-					"lowpass": {
-						"high": 0.1
-					},
-					"highpass": {
-						"low": 0.01
-					}
-				}
-			}
-		}
-	},
 	"hcp": {
 		"tr": 0.72,
-		"physio": ["rv", "hr", "ppg_low", "precuneus", "superior_parietal", "global_sig"],
+		"physio": ["rv", "rv_amp", "rv_rate", "hr", "ppg_low", "precuneus", "superior_parietal", "global_sig"],
 		"nscans": 15,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -208,10 +172,109 @@
 					"filter_choice": {
 						"hr": "bandpass",
 						"rv": "bandpass",
+						"rv_amp": "bandpass",
+						"rv_rate": "bandpass",
 						"ppg_low": "raw",
 						"precuneus": "raw",
 						"superior_parietal": "raw",
 						"global_sig": "highpass"
+					},
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			}
+		}
+	},
+	"monash": {
+		"tr": 2.45,
+		"physio": [],
+		"nscans": 26,
+		"mask": "masks/MNI152_T1_3mm_brain_mask.nii.gz",
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "bandpass",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.031
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+
+			}
+		}
+	},
+	"monash_pet": {
+		"tr": 16,
+		"physio": [],
+		"nscans": 26,
+		"mask": "masks/MNI152_T1_3mm_brain_mask.nii.gz",
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.009
+					}
+				}
+			},
+			"physio": {
+
+			}
+		}
+	},
+	"spreng": {
+		"tr": 3,
+		"physio": ["hr", "rv", "ppg_low"],
+		"nscans": 50,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"concat_method": "zscore",
+				"filter_params": {
+					"filter_choice": {
+						"vigilance": "lowpass",
+						"hr": "bandpass",
+						"rv": "bandpass",
+						"ppg_low": "raw",
+						"global_sig": "bandpass"
 					},
 					"bandpass" : {
 						"low": 0.01,
