@@ -149,6 +149,7 @@ external/*
 
 # Rstudio history
 .Rhistory
+.Rapp.history
 
 # scratch notebook
 scratch.ipynb
