@@ -4,20 +4,8 @@ import numpy as np
 import os
 
 from utils.signal.butterworth_filters import butterworth_filter
+from utils.load_write import convert_2d, convert_4d
 from scipy.stats import zscore
-
-
-def convert_2d(mask, nifti_data):
-    nonzero_indx = np.nonzero(mask)
-    nifti_2d = nifti_data[nonzero_indx]
-    return nifti_2d.T
-
-
-def convert_4d(mask, nifti_data):
-    nifti_4d = np.zeros(mask.shape + (nifti_data.shape[0],), 
-                        dtype=nifti_data.dtype)
-    nifti_4d[mask, :] = nifti_data.T
-    return nifti_4d
 
 
 def output_nifti(output_file, nifti_file, nifti_4d):

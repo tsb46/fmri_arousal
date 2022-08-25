@@ -64,7 +64,7 @@ if __name__ == '__main__':
                         type=str)
     parser.add_argument('-c', '--color_map',
                         help='matplotlib colormap specified as string',
-                        default=None,
+                        default='cold_hot',
                         type=str)
     parser.add_argument('-cmax', '--color_max',
                         help='max and min (symmetric) colorbar limit',

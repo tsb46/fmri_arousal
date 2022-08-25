@@ -15,26 +15,49 @@ def construct_design_matrix(model_formula, df, omit_intercept=True):
     return design_mat
 
 
+def construct_lag_splines(physio_var, p_nlags, n_n_lags, nknots):
+    # Define model formula
+    # Create lag sequence array (include lag of 0!)
+    seq_lag = np.arange(-n_n_lags, p_nlags+1)
+    # Create lag splines
+    lag_splines = dmatrix("cr(x, df=nknots) - 1", 
+                          {"x": seq_lag}, return_type='dataframe')
+    # Create design matrix 
+    basis_lag = np.zeros((len(physio_var), lag_splines.shape[1]))
+    # Loop through lag bases and multiply column pairs
+    lag_mat = pd.concat([physio_var.shift(l) for l in seq_lag], axis=1)
+    for l in np.arange(lag_splines.shape[1]):
+        basis_lag[:, l] = np.dot(lag_mat.values, lag_splines.iloc[:,l].values)
+    return basis_lag, lag_splines
+
+
+def construct_tensor_spline(v1, v2, nknots):
+    # Define model formula
+    spline_basis = dmatrix("te(cr(x, df=nknots), cr(y, df=nknots)) - 1", 
+                          {"x": v1, 'y': v2}, 
+                          return_type='dataframe')
+    return spline_basis
+
+
 def convolve_hrf(hrf, ts):
     n_drop = len(hrf) - 1
     convolved_events = np.convolve(ts, hrf)
     return convolved_events[:-n_drop]
 
 
-def create_interaction_maps(beta_s1, beta_i, 
-                            plot_rng=[-4,-3,-2,-1,0,1,2,3,4]):
-    # We ASSUME that the variables have been z-scored, so that a value of 1 represents 1 std. above the mean
-    # Calculate the effect of V1 (beta_s1) at different levels of V2 (beta_s2)
-    beta_simple = [beta_s1 + s2_val*beta_i for s2_val in plot_rng]
-    return np.array(beta_simple)
-
-
-def create_quadratic_maps(beta_s1, beta_quad, 
-                          plot_rng=[-4,-3,-2,-1,0,1,2,3,4]):
-    # We ASSUME that the variables have been z-scored, so that a value of 1 represents 1 std. above the mean
-    # Calculate the effect of V1 (beta_s1) at different levels of V2 (beta_s2)
-    beta_simple = [beta_s1 + s1_val*beta_quad for s1_val in plot_rng]
-    return np.array(beta_simple)
+def evaluate_tensor_spline(p1_eval, p2_eval, model, spline_basis):
+    pred_maps = []
+    for p1_e in p1_eval:
+        p1_pred_maps = []
+        for p2_e in p2_eval:
+            # Create basis from model evaluation using previously defined design matrix (for model fit)
+            pred_mat = dmatrix(spline_basis.design_info, {'x': p1_e, 'y': p2_e}, 
+                                     return_type='dataframe')
+            # Get predictions from model
+            pred_map = model.predict(pred_mat)
+            p1_pred_maps.append(pred_map)
+        pred_maps.append(np.vstack(p1_pred_maps))
+    return pred_maps
 
 
 def get_hrf(t, tr, type):
@@ -46,31 +69,6 @@ def get_hrf(t, tr, type):
     elif type == 'hr':
         hrf = hrf_hr(t_steps)
     return hrf
-
-
-def get_interaction_map(interaction_map_str, design_cols, subj_beta_maps):
-    if interaction_map_str not in design_cols:
-            raise Exception('Interaction string specified for option -i does not match any string in model formula')
-    else:
-        i_index = design_cols.tolist().index(interaction_map_str)
-    v1v2 = interaction_map_str
-    v1_i, v2_i = parse_interaction_string(v1v2)
-    # Remember, the beta maps are ordered according to  the order of the columns in the design_mat dataframe
-    avg_beta_inter = np.mean([bmap[i_index] for bmap in subj_beta_maps], axis=0) 
-    return avg_beta_inter, v1_i, v2_i
-
-
-def get_quadratic_map(quadratic_map_str, design_cols, subj_beta_maps):
-    design_cols_strip = [col.replace(' ', '') for col in design_cols]
-    if quadratic_map_str not in design_cols_strip:
-            raise Exception('Quadratic string specified for option -q does not match any string in model formula')
-    else:
-        i_index = design_cols_strip.index(quadratic_map_str)
-    quad_term = quadratic_map_str
-    simple_var = parse_quadratic_string(quad_term)
-    # Remember, the beta maps are ordered according to the order of the columns in the design_mat dataframe
-    avg_beta_quad = np.mean([bmap[i_index] for bmap in subj_beta_maps], axis=0) 
-    return avg_beta_quad, simple_var
 
 
 def hrf_double_gamma(t, dip=0.35):
@@ -158,24 +156,14 @@ def mask_voxels(func_data):
 
 
 def onsets_to_block(df, scan_len, tr):
-    block_ts = np.zeros(scan_len)
+    block_ts = []
     for onset, dur in zip(df.onset, df.duration):
         tr_event = int(np.floor(onset/tr))
         tr_dur = int(np.ceil(dur/tr))
-        block_ts[tr_event:(tr_event+tr_dur)] = 1
+        block_ts.append(np.arange(tr_event, tr_event+tr_dur))
+
     return block_ts
 
-
-def parse_quadratic_string(q_str):
-    # parse interaction string from patsy model formula
-    var = q_str.split('(')[1].split('**')[0]
-    return var
-
-
-def parse_interaction_string(i_str):
-    # parse interaction string from patsy model formula
-    v1, v2 = i_str.split(':')
-    return v1, v2
 
 
 

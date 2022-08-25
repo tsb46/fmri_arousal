@@ -13,14 +13,19 @@ from utils.load_physio import preprocess_physio
 
 # path to the analysis parameter .json file. Never move this out of the base directory!
 params_fp='analysis_params.json'
-# path to 3mm dilated brain mask file. Never move this out of the masks directory!
-mask_fp = 'masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz'
 
 
 def convert_2d(mask, nifti_data):
     nonzero_indx = np.nonzero(mask)
     nifti_2d = nifti_data[nonzero_indx]
     return nifti_2d.T
+
+
+def convert_4d(mask, nifti_data):
+    nifti_4d = np.zeros(mask.shape + (nifti_data.shape[0],), 
+                        dtype=nifti_data.dtype)
+    nifti_4d[mask, :] = nifti_data.T
+    return nifti_4d
 
 
 def filter_zero_voxels(nifti_data, group_method, use_first=True):
@@ -67,13 +72,29 @@ def load_chang_bh_event_file():
     return events
 
 
+def load_hcp_task_event_file(ev_dir, task):
+    if task == 'hcp_rel':
+        rel = np.loadtxt(f'{ev_dir}/relation.txt', unpack=True)
+        match = np.loadtxt(f'{ev_dir}/match.txt', unpack=True)
+        all_trials = np.concatenate([rel, match], axis=1)
+    elif task == 'hcp_wm':
+        bk_str = ['0bk', '2bk']
+        stimuli_str = ['body', 'faces', 'tools', 'places']
+        all_trials = [np.loadtxt(f'{ev_dir}/{bk}_{stimuli}.txt', unpack=True) 
+                      for bk in bk_str for stimuli in stimuli_str]
+        all_trials = np.vstack(all_trials).T
+    all_trials = {['onset','duration'][i]: all_trials[i] for i in range(2)}
+    trials_df = pd.DataFrame(all_trials).sort_values(by='onset')
+    return trials_df
+
+
 def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, 
-              events=False, group_method='stack', physio_group_method='stack', 
+              group_method='stack', physio_group_method='stack', 
               verbose=True, filter_nan_voxels=True, regress_global=False):
     params = load_params()
 
     # Pull physio labels (if not already selected)
-    if data == 'hcp_fix':
+    if (data == 'hcp_fix') | (data == 'hcp_rel') | (data == 'hcp_wm'):
         data_str = 'hcp'
     else:
         data_str = data
@@ -83,19 +104,14 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None,
         physio = params_data['physio']
 
     # Load mask
-    mask = nb.load(mask_fp).get_fdata() > 0
+    mask = nb.load(params_data['mask']).get_fdata() > 0
 
 
     # Pull file paths
-    fps = find_fps(data, level, physio, params_data, events, subj_n, scan_n)
+    fps = find_fps(data, level, physio, params_data, subj_n, scan_n)
     # Print filter parameters for functional and physio signals
     if verbose:
         print_filter_info(params_data, load_physio)
-
-    # Pull events, if specified in options
-    if events:
-        event_df = load_events(fps['events'], level, data, group_method)
-        params_data['events'] = event_df
 
     # Pull data for subject level analysis
     if level == 'subject':
@@ -138,26 +154,6 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None,
         zero_mask = np.tile(1, n_vert_orig).astype(bool)
 
     return func_data, physio_proc, physio, zero_mask, n_vert_orig, params_data
-
-
-def load_events_fp(fp, data):
-    return 
-
-
-def load_events(fps, level, data, group_method):
-    if level == 'subject':
-        event_df = load_events_fp(fp, data)
-        if group_method == 'list':
-            event_df = [event_df]
-    elif level == 'group':
-        group_events = []
-        for fp in fps:
-            events = load_events_fp(fp, data)
-            group_events.append(events)
-        if group_method == 'stack':
-            return pd.concat(group_events, axis=0)
-        else:
-            return group_events
 
 
 def load_group_func(fps, mask, params, group_method, regress_global, verbose):
@@ -251,7 +247,7 @@ def regress_global_signal(func_data, mask_nan =True):
     return func_data
 
 
-def write_nifti(data, output_file, zero_mask, orig_n_vert):
+def write_nifti(data, output_file, zero_mask, orig_n_vert, mask_fp):
     data_imp = impute_zero_voxels(data, zero_mask, orig_n_vert)
     mask = nb.load(mask_fp)
     mask_bin = mask.get_fdata() > 0

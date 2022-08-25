@@ -15,13 +15,10 @@ sf = 400
 sf_resamp=100 # Resample frequency of EEG and physio time courses
 # Sampling frequency of funcional scans (1/TR)
 sf_func = 1/0.72
-# Number of time samples 
-n_scan = 1200
-
 physio_prefix = ['ppg', 'resp']
 
 
-def process_physio(physio_signals):
+def process_physio(physio_signals, n_scan):
     ## Resp signals
     resp_signals_nk = nk_extract_physio(physio_signals['resp'], 'resp', sf_resamp, 
                                         n_scan, lowpass=0.15)
@@ -66,10 +63,17 @@ def load_physio(subj):
     return physio_signals_resamp
 
 
-def run_main(subj, output_physio):
+def run_main(subj, output_physio, dataset):
+    if dataset == 'rest':
+        n_scan = 1200
+    elif dataset == 'rel':
+        n_scan = 232
+    elif dataset == 'wm':
+        n_scan = 405
+
     # Load physio data
     physio_signals = load_physio(subj)
-    physio_df = process_physio(physio_signals)
+    physio_df = process_physio(physio_signals, n_scan)
     write_output(physio_df, output_physio)
 
 
@@ -85,7 +89,7 @@ def write_output(physio_df, output_physio):
 
 
 if __name__ == '__main__':
-    """Preprocess physio data from LEMON data"""
+    """Preprocess physio data from HCP data"""
     parser = argparse.ArgumentParser(description='Preprocess physio data from HCP data')
     parser.add_argument('-s', '--subject',
                         help='<Required> subject number in HCP dataset',
@@ -96,6 +100,10 @@ if __name__ == '__main__':
                         required=False,
                         default=os.getcwd(),
                         type=str)
+    parser.add_argument('-d', '--dataset',
+                        help='hcp dataset (rest, wm, rel)',
+                        required=True,
+                        type=str)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['subject'], 
-             args_dict['output_file_physio'])
+    run_main(args_dict['subject'], args_dict['output_file_physio'], 
+             args_dict['dataset'])

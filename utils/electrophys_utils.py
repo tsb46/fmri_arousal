@@ -5,6 +5,7 @@ import pandas as pd
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks, hilbert, resample
 from utils.signal.butterworth_filters import butterworth_filter 
+from utils.rsp_rvt import rsp_rvt
 from scipy.stats import iqr, zscore
 
 
@@ -155,7 +156,7 @@ def nk_extract_resp_signals(ts, sf):
     # extract respiration amplitude and frequency
     r_signals, r_info = nk.rsp_process(ts, sampling_rate=sf)
     # compute rvt = breathing frequency * breathing amplitude
-    r_signals['RSP_RVT'] = r_signals['RSP_Rate'] * r_signals['RSP_Amplitude']
+    r_signals['RSP_RVT'] = rsp_rvt(r_signals['RSP_Clean'], sampling_rate=sf)
     r_signals['RSP_AMP_HILBERT'] = hilbert_resp_amplitude(ts, sf)
     # compute respiratory variability (6 seconds)
     window = int(sf*6)
