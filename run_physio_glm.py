@@ -10,23 +10,8 @@ from run_pca import pca, rotation
 from scipy.stats import zscore
 from scipy.signal import hilbert
 from utils.load_write import load_data, write_nifti
-from utils.glm_utils import linear_regression
+from utils.glm_utils import linear_regression, construct_lag_splines
 
-
-def construct_lag_splines(physio_var, p_nlags, n_n_lags, nknots):
-    # Define model formula
-    # Create lag sequence array (include lag of 0!)
-    seq_lag = np.arange(-n_n_lags, p_nlags+1)
-    # Create lag splines
-    lag_splines = dmatrix("cr(x, df=nknots) - 1", 
-                          {"x": seq_lag}, return_type='dataframe')
-    # Create design matrix 
-    basis_lag = np.zeros((len(physio_var), lag_splines.shape[1]))
-    # Loop through lag bases and multiply column pairs
-    lag_mat = pd.concat([physio_var.shift(l) for l in seq_lag], axis=1)
-    for l in np.arange(lag_splines.shape[1]):
-        basis_lag[:, l] = np.dot(lag_mat.values, lag_splines.iloc[:,l].values)
-    return basis_lag, lag_splines
 
 
 def evaluate_model(lag_vec, model, spline_basis, var_eval):
@@ -43,7 +28,7 @@ def evaluate_model(lag_vec, model, spline_basis, var_eval):
 def run_main(dataset, physio, p_n_lags, n_n_lags, nknots, 
              regress_global_sig, n_eval, time_lag_maps, var_eval=1):
     # Load data
-    func_data, physio_sig, physio_label, zero_mask, n_vert, _ = \
+    func_data, physio_sig, physio_label, zero_mask, n_vert, analysis_params = \
     load_data(dataset, 'group', physio=[physio], load_physio=True, regress_global=regress_global_sig) 
 
     physio_data = np.squeeze(np.stack(physio_sig, axis=1))
@@ -64,26 +49,22 @@ def run_main(dataset, physio, p_n_lags, n_n_lags, nknots,
     pred_maps = evaluate_model(pred_lag_vec, lin_reg, spline_basis, var_eval)
     # Write out results
     write_results(dataset, physio, pred_maps, time_lag_maps, pred_lag_vec, 
-                  zero_mask, n_vert)
+                  zero_mask, n_vert, analysis_params)
 
-def write_results(dataset, term, pred_maps, time_lag_maps, pred_lag_vec, zero_mask, n_vert):
+def write_results(dataset, term, pred_maps, time_lag_maps, pred_lag_vec, zero_mask, n_vert, analysis_params):
     analysis_str = f'{dataset}_physio_reg_group_{term}'
     # if time-lag maps specified, get lag of maximum/minimum cross-correlation of each voxel.
     if time_lag_maps:
         # Minimum (negative) cross-correlation
         neg_indx = np.argmin(pred_maps, axis=0)
         neg_lag_indx = np.array([pred_lag_vec[i] for i in neg_indx])
-        write_nifti(neg_lag_indx[np.newaxis, :], f'{analysis_str}_min_time_lag.nii', zero_mask, n_vert)
+        write_nifti(neg_lag_indx[np.newaxis, :], f'{analysis_str}_min_time_lag.nii', zero_mask, n_vert, analysis_params['mask'])
         # Maximum (positive cross-correlation)
         pos_indx = np.argmax(pred_maps, axis=0)
         pos_lag_indx = np.array([pred_lag_vec[i] for i in pos_indx])
-        write_nifti(pos_lag_indx[np.newaxis, :], f'{analysis_str}_max_time_lag.nii', zero_mask, n_vert)
+        write_nifti(pos_lag_indx[np.newaxis, :], f'{analysis_str}_max_time_lag.nii', zero_mask, n_vert, analysis_params['mask'])
     else:
-        write_nifti(pred_maps, analysis_str, zero_mask, n_vert)
-
-        
-
-
+        write_nifti(pred_maps, analysis_str, zero_mask, n_vert, analysis_params['mask'])
 
 
 
@@ -92,7 +73,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run Physio GLM w/ Time-lag Spline Regressors')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp', 'hcp_fix'], 
+                        choices=['chang', 'nki', 'hcp', 'hcp_fix', 
+                                 'hcp_rel', 'hcp_wm', 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-p', '--physio',
@@ -101,12 +83,12 @@ if __name__ == '__main__':
                         choices=['hr', 'rv', 'alpha', 'delta', 'infraslow', 'ppg_low'],
                         type=str)
     parser.add_argument('-pl', '--p_nlags',
-                        help='Number of lags (TRs) of physio signal in the positive (backward) direction',
+                        help='Number of lags (TRs) of physio signal in the positive (forward) direction',
                         required=False,
                         default=0,
                         type=int) 
     parser.add_argument('-nl', '--n_nlags',
-                        help='Number of lags (TRs) of physio signal in the negative (forward) direction',
+                        help='Number of lags (TRs) of physio signal in the negative (backward) direction',
                         required=False,
                         default=0,
                         type=int)   

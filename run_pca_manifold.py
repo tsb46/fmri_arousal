@@ -10,16 +10,7 @@ from run_pca import pca, rotation
 from scipy.stats import zscore
 from scipy.signal import hilbert
 from utils.load_write import load_data, write_nifti
-from utils.glm_utils import linear_regression
-
-
-def construct_spline_basis(pca_ts, nknots):
-    # Define model formula
-    # Create lag splines
-    spline_basis = dmatrix("te(cr(x, df=nknots), cr(y, df=nknots)) - 1", 
-                          {"x": pca_ts[:,0], 'y': pca_ts[:,1]}, 
-                          return_type='dataframe')
-    return spline_basis
+from utils.glm_utils import linear_regression, construct_tensor_spline, evaluate_tensor_spline
 
 
 def evaluate_model(p1_eval, p2_eval, model, spline_basis):
@@ -39,7 +30,7 @@ def evaluate_model(p1_eval, p2_eval, model, spline_basis):
 
 def run_main(dataset, pca_res_fp, p1, p2, nknots, regress_global_sig, n_eval):
     # Load data
-    func_data, _, _, zero_mask, n_vert, _ = load_data(dataset, 'group', physio=None, load_physio=False, 
+    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, 'group', physio=None, load_physio=False, 
                                                       regress_global=regress_global_sig) 
 
     # Load pca results
@@ -48,7 +39,7 @@ def run_main(dataset, pca_res_fp, p1, p2, nknots, regress_global_sig, n_eval):
 
     # Construct Design matrix using patsy style formula
     print('construct spline matrix')
-    spline_basis = construct_spline_basis(pca_ts, nknots)
+    spline_basis = construct_tensor_spline(pca_ts[:,0], pca_ts[:,1], nknots)
 
     # Run regression
     print('run regression')
@@ -56,20 +47,19 @@ def run_main(dataset, pca_res_fp, p1, p2, nknots, regress_global_sig, n_eval):
                                 intercept=False, norm=False)
     # Get predicted maps at all time lags at equally spaced percentiles
     print('get predicted maps at different levels of p1 and p2')
-    p1_5, p1_95 = np.percentile(pca_ts[:,0], [5, 95])
-    p2_5, p2_95 = np.percentile(pca_ts[:,1], [5, 95])
-    p1_eval = np.linspace(p1_5, p1_95, n_eval)
-    p2_eval = np.linspace(p2_5, p2_95, n_eval)
-    pred_maps = evaluate_model(p1_eval, p2_eval, lin_reg, spline_basis)
+    p1_eval = np.percentile(pca_ts[:,0], [1, 10, 50, 90, 99])
+    p2_eval = np.percentile(pca_ts[:,1], [1, 10, 50, 90, 99])
+    pred_maps = evaluate_tensor_spline(p1_eval, p2_eval, lin_reg, spline_basis)
     # Write out results
-    write_results(dataset, pred_maps, [p1_eval, p2_eval], zero_mask, n_vert)
+    write_results(dataset, pred_maps, [p1_eval, p2_eval], zero_mask, n_vert, params)
 
 
-def write_results(dataset, pred_maps, pred_vec, zero_mask, n_vert):
+def write_results(dataset, pred_maps, pred_vec, zero_mask, n_vert, params):
     analysis_str = f'{dataset}_pc_manifold_group'
     # if time-lag maps specified, get lag of maximum/minimum cross-correlation of each voxel.
+    pickle.dump(pred_vec, open(f'{analysis_str}_results.pkl', 'wb'))
     for i, maps in enumerate(pred_maps):
-        write_nifti(maps, f'{analysis_str}_{i}', zero_mask, n_vert)
+        write_nifti(maps, f'{analysis_str}_{i}', zero_mask, n_vert, params['mask'])
 
         
 
@@ -79,10 +69,10 @@ def write_results(dataset, pred_maps, pred_vec, zero_mask, n_vert):
 
 if __name__ == '__main__':
     """Run main analysis"""
-    parser = argparse.ArgumentParser(description='Run Physio GLM w/ Time-lag Spline Regressors')
+    parser = argparse.ArgumentParser(description='Run Tensor Spline Regression Analysis on PC Components')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'yale', 'hcp', 'chang_bh'], 
+                        choices=['chang', 'nki', 'yale', 'hcp', 'hcp_fix', 'chang_bh'], 
                         required=True,
                         type=str)
     parser.add_argument('-r', '--pca_results',

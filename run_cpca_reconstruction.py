@@ -3,28 +3,7 @@ import numpy as np
 import pickle
 
 from scipy.stats import zscore
-from utils.load_write import load_data, write_nifti
-
-
-def write_results(dataset,recon_comp, n_comp, zero_mask, n_vert):
-    analysis_str = f'{dataset}_cpca_recon_n{n_comp}'
-    write_nifti(recon_comp, analysis_str, zero_mask, n_vert)        
-
-
-def run_main(dataset, cpca_res, n_recon, n_bins, rotation, real=True):
-    # Not ideal to load full group data; only needed to get brain_mask to write nifti
-    _, _, _, zero_mask, n_vert, _ = load_data(dataset, 'group', physio=None, load_physio=False) 
-    cpca_res = pickle.load(open(cpca_res, 'rb'))
-    bin_indx_all = []
-    bin_centers_all = []
-    for n in range(n_recon):
-        recon_ts = reconstruct_ts(cpca_res, [n], real, rotation)
-        phase_ts = np.angle(cpca_res['pc_scores'][:,n]) 
-        bin_indx, bin_centers = create_bins(phase_ts, n_bins)
-        dynamic_phase_map = create_dynamic_phase_maps(recon_ts, bin_indx, n_bins)
-        bin_indx_all.append(bin_indx); bin_centers_all.append(bin_centers)
-        write_results(dataset, dynamic_phase_map, n, zero_mask, n_vert)
-    pickle.dump([bin_indx_all, bin_centers_all], open(f'{dataset}_cpca_recon_results.pkl', 'wb'))
+from utils.load_write import load_data, write_nifti        
 
 
 def create_bins(phase_ts, n_bins): 
@@ -57,6 +36,26 @@ def reconstruct_ts(pca_res, n, real=True, rotation=False):
         recon_ts = np.imag(recon_ts)
     return recon_ts
 
+
+def write_results(dataset,recon_comp, n_comp, zero_mask, n_vert, params):
+    analysis_str = f'{dataset}_cpca_recon_n{n_comp}'
+    write_nifti(recon_comp, analysis_str, zero_mask, n_vert, params['mask'])
+
+
+def run_main(dataset, cpca_res, n_recon, n_bins, rotation, real=True):
+    # Not ideal to load full group data; only needed to get brain_mask to write nifti
+    _, _, _, zero_mask, n_vert, params = load_data(dataset, 'group', physio=None, load_physio=False) 
+    cpca_res = pickle.load(open(cpca_res, 'rb'))
+    bin_indx_all = []
+    bin_centers_all = []
+    for n in range(n_recon):
+        recon_ts = reconstruct_ts(cpca_res, [n], real, rotation)
+        phase_ts = np.angle(cpca_res['pc_scores'][:,n]) 
+        bin_indx, bin_centers = create_bins(phase_ts, n_bins)
+        dynamic_phase_map = create_dynamic_phase_maps(recon_ts, bin_indx, n_bins)
+        bin_indx_all.append(bin_indx); bin_centers_all.append(bin_centers)
+        write_results(dataset, dynamic_phase_map, n, zero_mask, n_vert, params)
+    pickle.dump([bin_indx_all, bin_centers_all], open(f'{dataset}_cpca_recon_results.pkl', 'wb'))
 
 
 if __name__ == '__main__':

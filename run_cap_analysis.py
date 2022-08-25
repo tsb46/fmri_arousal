@@ -65,10 +65,10 @@ def run_main(dataset, n_clusters, seed, norm_maps, lag, z_thres, sign, save_supr
     results_list = [cluster_centroid, cluster_indx, supra_thres_tps, supra_thres_maps]
     results_labels = ['c_centroids', 'c_indx', 'supra_thres_tps', 'supra_thres_maps']
     write_results(results_list, results_labels, seed, norm_maps, sign, dataset, 
-                  zero_mask, n_vert, save_suprathres_maps)
+                  zero_mask, n_vert, save_suprathres_maps, params)
 
 def write_results(results_list, results_labels, seed, norm, sign, dataset,
-                   zero_mask, n_vert, save_suprathres_maps):
+                   zero_mask, n_vert, save_suprathres_maps, params):
     results_dict = {l: r for r, l in zip(results_list, results_labels)}
     analysis_str = f'{dataset}_cap_{seed}'
     if norm:
@@ -83,7 +83,7 @@ def write_results(results_list, results_labels, seed, norm, sign, dataset,
                         zero_mask, n_vert)
 
     pickle.dump(results_dict, open(f'{analysis_str}_results.pkl', 'wb'))
-    write_nifti(results_dict['c_centroids'], analysis_str, zero_mask, n_vert)
+    write_nifti(results_dict['c_centroids'], analysis_str, zero_mask, n_vert, params['mask'])
             
 
 

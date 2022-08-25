@@ -69,7 +69,7 @@ def evaluate_model(pvar, lin_reg, basis_var, basis_lag, physio_eval, lag_eval, n
     pred_mat = lin_reg.predict(xpred)
     # v_pred_mat = pd.DataFrame(pred_mat.reshape(n_var, n_lag, order='F'), index=var_pred_array, columns=seq_lag)
     pred_all = reshape_output(pred_mat, n_var, n_lag)
-    return pred_all
+    return pred_all, seq_lag, var_pred_array, 
 
 
 def reshape_output(pred_mat, n_var, n_lag):
@@ -81,14 +81,10 @@ def reshape_output(pred_mat, n_var, n_lag):
     return pred_list
 
 
-def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_vert):
+def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_vert, params):
     if level == 'group':
-        analysis_str = f'{dataset}_physio_reg_group_{term}'
-    elif level == 'subject':
-        analysis_str = f'{dataset}_physio_reg_s{subj_n}'
-        if scan is not None:
-            analysis_str += f'_{scan}_{term}'
-    write_nifti(beta_map, analysis_str, zero_mask, n_vert)
+        analysis_str = f'{dataset}_dlnm_group_{term}'
+    write_nifti(beta_map, analysis_str, zero_mask, n_vert, params['mask'])
 
 
 def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag_eval):
@@ -107,12 +103,13 @@ def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag
     lin_reg = linear_regression(crossbasis[na_indx,:], func_data[na_indx, :], return_model=True, 
                                 intercept=False, norm=False)
     
-    pred_maps = evaluate_model(physio_sig[physio_var], lin_reg, basis_var, basis_lag, 
+    pred_maps, lag_eval, eval_points = evaluate_model(physio_sig[physio_var], lin_reg, basis_var, basis_lag, 
                                physio_eval, lag_eval, nlags, func_data.shape[1])
     pred_maps = np.stack(pred_maps,axis=2)
 
+    pickle.dump([lin_reg, lag_eval, eval_points], open(f'{dataset}_dlnm_group_results.pkl', 'wb'))
     for i in range(physio_eval):
-        write_results(dataset, f'test_{i}', pred_maps[i,:,:], 'group', None, None, zero_mask, n_vert)
+        write_results(dataset, f'eval_{i}', pred_maps[i,:,:], 'group', None, None, zero_mask, n_vert, params)
 
 
 if __name__ == '__main__':
@@ -121,7 +118,8 @@ if __name__ == '__main__':
                                      'physio time courses using dynamic lag non linear model')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix'], 
+                        choices=['chang', 'chang_bh', 'nki', 'yale',
+                                  'hcp', 'hcp_fix', 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-p', '--physio_var',
@@ -141,8 +139,7 @@ if __name__ == '__main__':
                         type=int)  
     parser.add_argument('-vl', '--lag_nknots',
                         help='Number of knots in spline basis for lag. '
-                        'Knots are placed along the range of lag values at a log '
-                        'scale (more resolution at earlier lags)',
+                        'Knots are placed along equally spaced values across lag range',
                         default=3, 
                         required=False,
                         type=int)  

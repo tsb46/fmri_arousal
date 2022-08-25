@@ -4,8 +4,7 @@ import pandas as pd
 import pickle
 
 from utils.glm_utils import construct_design_matrix, convolve_hrf, \
-get_hrf, lag_and_convolve_physio, linear_regression, onsets_to_block, \
-create_interaction_maps, get_interaction_map
+get_hrf, lag_and_convolve_physio, linear_regression, onsets_to_block
 from scipy.stats import zscore
 from utils.load_write import load_data, write_nifti, load_nki_event_file
 
@@ -46,7 +45,7 @@ def group_task_blocks(event_df):
     return event_df
 
 
-def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_vert):
+def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_vert, params):
     if level == 'group':
         analysis_str = f'{dataset}_taskbh_group_{term}'
     elif level == 'subject':
@@ -54,7 +53,7 @@ def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_ver
         if scan is not None:
             analysis_str += f'_{scan}_{term}'
 
-    write_nifti(beta_map, analysis_str, zero_mask, n_vert)
+    write_nifti(beta_map, analysis_str, zero_mask, n_vert, params['mask'])
 
 
 def run_main(dataset, model_formula, time_lag, interaction_map, 
@@ -78,7 +77,7 @@ def run_main(dataset, model_formula, time_lag, interaction_map,
     # compute across subject task average
     if scan_average:
         scan_avg = average_scans(func_data)
-        write_results(dataset, 'scan_avg', scan_avg, level, subj_n, scan_n, zero_mask, n_vert)
+        write_results(dataset, 'scan_avg', scan_avg, level, subj_n, scan_n, zero_mask, n_vert, params)
 
     # load NKI event file (assuming timing is the same across subjects, see note above)
     df_events = load_nki_event_file()
@@ -99,19 +98,10 @@ def run_main(dataset, model_formula, time_lag, interaction_map,
         betas = linear_regression(design_mat, func, design_mat.columns)
         subj_beta_maps.append(betas)
 
-    # Parse interaction string (if specified) and identify beta map associated with the interaction term
-    if interaction_map is not None:
-        avg_beta_inter, v1_i, v2_i = get_interaction_map(interaction_map, design_mat.columns, 
-                                                         subj_beta_maps)
 
     for i, term in enumerate(design_mat.columns):
         avg_beta = np.mean([bmap[i] for bmap in subj_beta_maps], axis=0) 
-        write_results(dataset, term, avg_beta[np.newaxis, :], level, subj_n, scan_n, zero_mask, n_vert)
-        # If specified, and covariate is part of an interaction, create an interaction map
-        if (interaction_map is not None) and ((term == v1_i) | (term == v2_i)):
-            interaction_beta_maps = create_interaction_maps(avg_beta, avg_beta_inter)
-            write_results(dataset, f'{term}_interaction_map', 
-                          interaction_beta_maps, level, subj_n, scan_n, zero_mask, n_vert)
+        write_results(dataset, term, avg_beta[np.newaxis, :], level, subj_n, scan_n, zero_mask, n_vert, params)
 
 
 if __name__ == '__main__':
@@ -133,14 +123,6 @@ if __name__ == '__main__':
                         help='choice of lag (positive - shift to the right, negative - shift to the left) for physio time series',
                         default=0,
                         type=int)
-    parser.add_argument('-i', '--interaction_map',
-                        help='interaction effect string from model formula (option -f) that signifies the user would '
-                        'like an interaction map created. This string should match the interaction effect string used '
-                        'in the patsy formula (option -f) This should only be used if an interaction effect was specified'
-                        'the model',
-                        default=None,
-                        required=False,
-                        type=str)
     parser.add_argument('-l', '--level',
                         help='subject or group level analysis',
                         default='group',
@@ -169,6 +151,6 @@ if __name__ == '__main__':
 
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['model_formula'], args_dict['time_lag'],
-             args_dict['interaction_map'], args_dict['level'], args_dict['subject_n'], args_dict['scan_n'],
+             args_dict['level'], args_dict['subject_n'], args_dict['scan_n'],
              args_dict['convolve'], args_dict['scan_average'])
 

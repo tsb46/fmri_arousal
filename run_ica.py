@@ -15,15 +15,15 @@ def ica(input_data, n_comps):
     return ica.components_, sources
 
 
-def write_results(dataset, ica_type, spatial_map, ica_ts, zero_mask, n_vert):
+def write_results(dataset, ica_type, spatial_map, ica_ts, zero_mask, n_vert, params):
     analysis_str = f'{dataset}_ica_{ica_type}_group'
     pickle.dump([spatial_map, ica_ts], open(f'{analysis_str}_results.pkl', 'wb'))
-    write_nifti(spatial_map, f'{analysis_str}', zero_mask, n_vert)
+    write_nifti(spatial_map, f'{analysis_str}', zero_mask, n_vert, params['mask'])
 
 
 def run_main(dataset, n_comps, ica_type, regress_global_sig):
-    func_data, _, _, zero_mask, n_vert, _ = load_data(dataset, 'group', physio=None, load_physio=False, 
-                                                      regress_global=regress_global_sig) 
+    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, 'group', physio=None, load_physio=False, 
+                                                           regress_global=regress_global_sig) 
     # Normalize data
     if ica_type == 'spatial':
         func_data = zscore(func_data.T)
@@ -40,7 +40,7 @@ def run_main(dataset, n_comps, ica_type, regress_global_sig):
         spatial_map = unmixing_matrix
         ts = ica_comps
 
-    write_results(dataset, ica_type, spatial_map, ts, zero_mask, n_vert)
+    write_results(dataset, ica_type, spatial_map, ts, zero_mask, n_vert, params)
 
 
 if __name__ == '__main__':

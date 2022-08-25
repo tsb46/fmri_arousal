@@ -49,7 +49,7 @@ def rotation(pca_output, data, rotation):
 
 
 def write_results(dataset, level, pca_output, pca_type, comp_weights, 
-                  subj_n, scan, zero_mask, n_vert, rotate):
+                  subj_n, scan, zero_mask, n_vert, rotate, params):
     if level == 'group':
         analysis_str = f'{dataset}_pca_group'
     elif level == 'subject':
@@ -68,18 +68,19 @@ def write_results(dataset, level, pca_output, pca_type, comp_weights,
         comp_weights_imag = np.imag(comp_weights)
         comp_weights_ang = np.angle(comp_weights)
         comp_weights_abs = np.abs(comp_weights)
-        write_nifti(comp_weights_abs, f'{analysis_str}_magnitude', zero_mask, n_vert)
-        write_nifti(comp_weights_real, f'{analysis_str}_real', zero_mask, n_vert)
-        write_nifti(comp_weights_imag, f'{analysis_str}_imag', zero_mask, n_vert)
-        write_nifti(comp_weights_ang, f'{analysis_str}_ang', zero_mask, n_vert)        
+        write_nifti(comp_weights_abs, f'{analysis_str}_magnitude', zero_mask, n_vert, params['mask'])
+        write_nifti(comp_weights_real, f'{analysis_str}_real', zero_mask, n_vert, params['mask'])
+        write_nifti(comp_weights_imag, f'{analysis_str}_imag', zero_mask, n_vert, params['mask'])
+        write_nifti(comp_weights_ang, f'{analysis_str}_ang', zero_mask, n_vert, params['mask'])        
     elif pca_type == 'real':
-        write_nifti(comp_weights, f'{analysis_str}', zero_mask, n_vert)
+        write_nifti(comp_weights, f'{analysis_str}', zero_mask, n_vert, params['mask'])
     pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
 
 
 def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate, regress_global_sig):
-    func_data, _, _, zero_mask, n_vert, _ = load_data(dataset, level, physio=None, load_physio=False, 
-                                                subj_n=subj_n, scan_n=scan_n, regress_global=regress_global_sig) 
+    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, level, physio=None, load_physio=False, 
+                                                           subj_n=subj_n, scan_n=scan_n, 
+                                                           regress_global=regress_global_sig) 
     # If specified, center along rows
     if center == 'r':
         func_data -= func_data.mean(axis=1, keepdims=True)
@@ -96,7 +97,7 @@ def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate, 
 
     write_results(dataset, level, pca_output, pca_type, 
                   pca_output['loadings'], subj_n, scan_n,
-                  zero_mask, n_vert, rotate)
+                  zero_mask, n_vert, rotate, params)
 
 
 if __name__ == '__main__':
@@ -104,7 +105,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run PCA or CPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix'], 
+                        choices=['chang', 'chang_bh', 'nki', 'hcp', 'hcp_fix', 
+                                 'hcp_rel', 'hcp_wm', 'monash', 'monash_pet', 
+                                 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',

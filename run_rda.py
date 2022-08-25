@@ -7,43 +7,27 @@ import pickle
 from numpy.linalg import pinv
 from patsy import dmatrix
 from run_pca import pca, rotation
+from run_physio_glm_dlnlm import construct_crossbasis
 from scipy.stats import zscore
 from scipy.signal import hilbert
 from utils.load_write import load_data, write_nifti
 from utils.glm_utils import linear_regression
 
 
-def construct_lag_splines(physio_vars, nlags, nknots):
-    # Define model formula
-    # Create lag sequence array (include lag of 0!)
-    seq_lag = np.arange(nlags+1)
-    # Create lag splines
-    lag_splines = dmatrix("cr(x, df=nknots) - 1", 
-                          {"x": seq_lag}, return_type='dataframe')
-    # Create design matrix 
-    design_mat = []
-    for var_label in physio_vars.columns:
-        var = physio_vars[var_label].copy()
-        basis_lag = np.zeros((len(physio_vars), lag_splines.shape[1]))
-        # Loop through lag bases and multiply column pairs
-        lag_mat = pd.concat([var.shift(l) for l in seq_lag], axis=1)
-        for l in np.arange(lag_splines.shape[1]):
-            basis_lag[:, l] = np.dot(lag_mat.values, lag_splines.iloc[:,l].values)
-        design_mat.append(basis_lag)
-    design_mat = np.hstack(design_mat)
-    return design_mat
-
-
-def run_main(dataset, n_comps, physio, n_lags, nknots, rotate, regress_global_sig):
+def run_main(dataset, n_comps, physio, n_lags, lag_nknots, var_nknots, rotate, regress_global_sig):
     # Load data
-    func_data, physio_sig, physio_labels, zero_mask, n_vert, _ = \
-    load_data(dataset, 'group', physio=physio, load_physio=True, regress_global=regress_global_sig) 
+    func_data, physio_sig, physio_labels, zero_mask, n_vert, params = \
+    load_data(dataset, 'group', physio=[physio], load_physio=True, regress_global=regress_global_sig) 
 
-    physio_data = np.squeeze(np.stack(physio_sig, axis=1))
-    physio_df = pd.DataFrame(physio_data, columns=physio_labels)
+    # Create dataframe of physio signals
+    physio_sig = pd.DataFrame(np.squeeze(np.stack(physio_sig,axis=1)), 
+                              columns=physio_labels)
+
     # Construct Design matrix using patsy style formula
     print('construct spline matrix')
-    design_mat = construct_lag_splines(physio_df, n_lags, nknots)
+    # Construct Design matrix using patsy style formula
+    design_mat, basis_var, basis_lag = construct_crossbasis(physio_sig[physio], 
+                                                            n_lags, var_nknots, lag_nknots)
     # Lag introduces null values - trim beginning of predictor matrix
     na_indx = ~(np.isnan(design_mat).any(axis=1))
     func_data = func_data[na_indx]
@@ -91,16 +75,16 @@ def run_main(dataset, n_comps, physio, n_lags, nknots, rotate, regress_global_si
     res_labels = ['rda_comps', 'rda_proj', 'rda_proj_y', 'rda_comps_residuals', 
                   'rda_proj_residuals','pca_comps']
     write_results(dataset, res_list, res_labels,
-                  rotate, zero_mask, n_vert)
+                  rotate, zero_mask, n_vert, params)
 
 
-def write_results(dataset, res_list, res_labels, rotate, zero_mask, n_vert):
+def write_results(dataset, res_list, res_labels, rotate, zero_mask, n_vert, params):
     analysis_str = f'{dataset}_rda'
     if rotate is not None:
         analysis_str += f'_{rotate}'
     results_dict = {l: r for r,l in zip(res_list, res_labels)}
-    write_nifti(results_dict['rda_comps']['loadings'], analysis_str, zero_mask, n_vert)
-    write_nifti(results_dict['rda_comps_residuals']['loadings'], f'{analysis_str}_resid', zero_mask, n_vert)
+    write_nifti(results_dict['rda_comps']['loadings'], analysis_str, zero_mask, n_vert, params['mask'])
+    write_nifti(results_dict['rda_comps_residuals']['loadings'], f'{analysis_str}_resid', zero_mask, n_vert, params['mask'])
     pickle.dump(results_dict, open(f'{analysis_str}_results.pkl', 'wb'))
 
 
@@ -118,19 +102,26 @@ if __name__ == '__main__':
                         required=True,
                         type=int)
     parser.add_argument('-p', '--physio',
-                        help='select physio - can provide multiple (separated by space)',
+                        help='select physio',
                         required=False,
                         default=None,
-                        action='append',
                         type=str)
     parser.add_argument('-l', '--nlags',
                         help='Number of lags',
-                        default=10, 
+                        default=15, 
                         required=False,
                         type=int)  
-    parser.add_argument('-k', '--nknots',
-                        help='Number of knots in spline basis',
+    parser.add_argument('-lk', '--lag_nknots',
+                        help='Number of knots in spline basis for lag. '
+                        'Knots are placed along the range of lag values at a log '
+                        'scale (more resolution at earlier lags)',
                         default=3, 
+                        required=False,
+                        type=int)   
+    parser.add_argument('-vk', '--var_nknots',
+                        help='Number of knots in spline basis for physio var. '
+                        'Knots are placed at equally spaced quantiles based on N knots',
+                        default=5, 
                         required=False,
                         type=int)    
     parser.add_argument('-r', '--rotate',
@@ -147,5 +138,5 @@ if __name__ == '__main__':
 
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['n_comps'], args_dict['physio'], 
-             args_dict['nlags'], args_dict['nknots'], args_dict['rotate'], 
-             args_dict['regress_global_sig'])
+             args_dict['nlags'], args_dict['lag_nknots'], args_dict['var_nknots'],
+             args_dict['rotate'], args_dict['regress_global_sig'])

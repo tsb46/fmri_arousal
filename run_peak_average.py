@@ -42,15 +42,15 @@ def select_peaks(peaks, l_window, r_window, max_sample, n_samples):
 
 
 def write_results(dataset, peak_avg, pos_neg, physio_select, 
-                  zero_mask, n_vert):
+                  zero_mask, n_vert, params):
 	analysis_str = f'{dataset}_peak_avg_group_{physio_select}_{pos_neg}'
-	write_nifti(peak_avg, analysis_str, zero_mask, n_vert)
+	write_nifti(peak_avg, analysis_str, zero_mask, n_vert, params['mask'])
 
 
 def run_main(dataset, physio, pos_neg, l_window, r_window, 
              min_peak_thres, max_peak_thres, peak_distance, n_samples=100):
 	# Load data
-	func_data, physio_sig, physio_labels, zero_mask, n_vert, _ = load_data(dataset, 'group', 
+	func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', 
 	                                                                       physio=physio, 
 	                                                                       load_physio=True) 
 	# Normalize func data
@@ -65,7 +65,7 @@ def run_main(dataset, physio, pos_neg, l_window, r_window,
 		# Average functional data around peaks
 		peak_avg = average_peak_window(selected_peaks, func_data, l_window, r_window)
 		# Write out results
-		write_results(dataset, peak_avg, pos_neg, label, zero_mask, n_vert)
+		write_results(dataset, peak_avg, pos_neg, label, zero_mask, n_vert, params)
 
 
 if __name__ == '__main__':
