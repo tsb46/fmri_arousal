@@ -7,9 +7,9 @@ subject_data<- read.csv("subject_list_hcp_relational.csv",header = TRUE)
 subjects <- subject_data$subject
 scans <- subject_data$lr 
 
-func_output_dir = 'func/raw'
-physio_output_dir = 'physio/raw'
-events_output_dir = 'events'
+func_output_dir = 'func_rel/raw'
+physio_output_dir = 'physio_rel/raw'
+events_output_dir = 'events_rel'
 dir.create(file.path(func_output_dir), recursive=TRUE, showWarnings = FALSE)
 dir.create(file.path(physio_output_dir), recursive=TRUE, showWarnings = FALSE)
 dir.create(file.path(events_output_dir), recursive=TRUE, showWarnings = FALSE)

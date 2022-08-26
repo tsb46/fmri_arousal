@@ -322,8 +322,8 @@ fi
 # HCP Resting - FMRI, hr, rv
 if [ "$dataset" == "hcp" ]; then
 
-    # mkdir -p data/dataset_hcp/anat/proc1_csfmask
-    # echo "Structural preprocessing..."
+    mkdir -p data/dataset_hcp/anat/proc1_csfmask
+    echo "Structural preprocessing..."
     # # Structural preprocessing
     # for file_path in data/dataset_hcp/anat/raw_fs_seg/*.nii.gz; do
     #     filename=$(basename $file_path)
@@ -415,30 +415,30 @@ if [ "$dataset" == "hcp" ]; then
     #      -ch 0.1 -cl 0.01 -t 0.72 -o data/dataset_hcp/func_fix/proc4_bandpass/$filename
     # done
 
-    mkdir -p data/dataset_hcp/physio/proc1_physio
-    echo "Physio preprocessing..."
-    for file_path in data/dataset_hcp/physio/raw/*.txt; do
-        filename=$(basename $file_path)
-        echo "$filename" 
-        # get base subject name to specify path to structural scan
-        subj_file=$(cut -d'_' -f1 <<< "${filename}")
-        # subj_func=$(cut -d'_physio' -f1 <<< "${filename}")
-        subj_func=$(echo $filename | awk 'BEGIN {FS="_physio.txt" } ; { print $1 }')
+    # mkdir -p data/dataset_hcp/physio/proc1_physio
+    # echo "Physio preprocessing..."
+    # for file_path in data/dataset_hcp/physio/raw/*.txt; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename" 
+    #     # get base subject name to specify path to structural scan
+    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
+    #     # subj_func=$(cut -d'_physio' -f1 <<< "${filename}")
+    #     subj_func=$(echo $filename | awk 'BEGIN {FS="_physio.txt" } ; { print $1 }')
 
-        # Physio extraction
-        python -m utils.dataset.preprocess_hcp -s $file_path -o data/dataset_hcp/physio/proc1_physio/${subj_file}_physio -d rest
-        # # Extract precuneus BOLD signal from preprocessed band-pass functional data
-        # fslmeants -i data/dataset_hcp/func/proc4_bandpass/${subj_func}_rest.nii.gz\
-        # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_precuneus.txt \
-        # -m masks/precuneus_sphere_6mm.nii.gz
-        # # Extract global BOLD signal from preprocessed low-pass functional data
-        # fslmeants -i data/dataset_hcp/func/proc3_filter_norm/${subj_func}_rest.nii.gz \
-        # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_global_sig.txt \
-        # -m masks/MNI152_T1_3mm_gray_mask.nii.gz
-        # # Extract superior parietal BOLD signal from preprocessed band-pass functional data
-        # fslmeants -i data/dataset_hcp/func/proc4_bandpass/${subj_func}_rest.nii.gz\
-        # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_superior_parietal.txt \
-        # -m masks/superior_parietal_sphere_6mm.nii.gz
+    #     # Physio extraction
+    #     python -m utils.dataset.preprocess_hcp -s $file_path -o data/dataset_hcp/physio/proc1_physio/${subj_file}_physio -d rest
+    #     # Extract precuneus BOLD signal from preprocessed band-pass functional data
+    #     fslmeants -i data/dataset_hcp/func_fix/proc4_bandpass/${subj_func}_rest.nii.gz\
+    #     -o data/dataset_hcp/physio/proc1_physio/${subj_file}_precuneus.txt \
+    #     -m masks/precuneus_sphere_6mm.nii.gz
+    #     # Extract global BOLD signal from preprocessed low-pass functional data
+    #     fslmeants -i data/dataset_hcp/func_fix/proc3_filter_norm/${subj_func}_rest.nii.gz \
+    #     -o data/dataset_hcp/physio/proc1_physio/${subj_file}_global_sig.txt \
+    #     -m masks/MNI152_T1_3mm_gray_mask.nii.gz
+    #     # Extract superior parietal BOLD signal from preprocessed band-pass functional data
+    #     fslmeants -i data/dataset_hcp/func_fix/proc4_bandpass/${subj_func}_rest.nii.gz\
+    #     -o data/dataset_hcp/physio/proc1_physio/${subj_file}_superior_parietal.txt \
+    #     -m masks/superior_parietal_sphere_6mm.nii.gz
         
         # # Extract CSF signal from HCP CSF mask
         # fslmeants -i data/dataset_hcp/func/raw/${subj_func}_rest.nii.gz\

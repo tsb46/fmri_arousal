@@ -10,7 +10,7 @@ subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_rest_subset.csv'
 subject_list_hcp_rel = 'data/dataset_hcp_task/subject_list_hcp_relational.csv'
 subject_list_hcp_wm = 'data/dataset_hcp_task/subject_list_hcp_wm.csv'
 subject_list_monash = 'data/dataset_monash/subject_list_monash_subset.csv'
-subject_list_spreng = 'data/dataset_spreng/subject_list_spreng_subset.csv'
+subject_list_spreng = 'data/dataset_spreng/subject_list_spreng.csv'
 
 
 def find_fps(data, level, physio, params, subj_n=None, scan=None):
