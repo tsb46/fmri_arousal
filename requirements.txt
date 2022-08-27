@@ -1,0 +1,11 @@
+fbpca==1.0
+matplotlib==3.5.1
+mne==0.23.4
+neurokit2==0.1.4.1
+nibabel==3.2.2
+nilearn==0.9.1
+numpy==1.21.2
+pandas==1.4.1
+patsy==0.5.2
+scikit_learn==1.1.2
+scipy==1.8.0
