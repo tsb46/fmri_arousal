@@ -35,6 +35,12 @@ def run_main(dataset, parcellation, physio, n_lags, lag_nknots, var_nknots, regr
 
     parcel_data = load_parcellation(parcellation, params['mask'], zero_mask)
     parcel_indx = np.unique(parcel_data)
+
+    # Construct FC matrix for original data
+    parcel_ts_orig = np.array([func_data[:, parcel_data == i].mean(axis=1) for i in parcel_indx])
+    fc_orig = np.corrcoef(parcel_ts_orig)
+
+
     # Construct Design matrix using patsy style formula
     design_mat, basis_var, basis_lag = construct_crossbasis(physio_sig[physio], 
                                                             n_lags, var_nknots, lag_nknots)
@@ -45,12 +51,13 @@ def run_main(dataset, parcellation, physio, n_lags, lag_nknots, var_nknots, regr
     design_mat = design_mat[na_indx, :]
     lin_reg = linear_regression(design_mat, func_data, return_model=True, 
                                 intercept=False, norm=False)
+
+    # Free up memory
+    del func_data, design_mat, parcel_ts_orig
+    
     # Predict individual voxel ts from design mat
     func_data_pred = lin_reg.predict(design_mat)
 
-    # Construct FC matrix for original data
-    parcel_ts_orig = np.array([func_data[:, parcel_data == i].mean(axis=1) for i in parcel_indx])
-    fc_orig = np.corrcoef(parcel_ts_orig)
     # Construct FC matrix for predicted data
     parcel_ts_pred = np.array([func_data_pred[:, parcel_data == i].mean(axis=1) for i in parcel_indx])
     fc_pred = np.corrcoef(parcel_ts_pred)

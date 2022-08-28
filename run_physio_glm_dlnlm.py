@@ -99,8 +99,9 @@ def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag
                                                             nlags, var_nknots, lag_knots)
     # Lag introduces null values - trim beginning of predictor matrix
     na_indx = ~(np.isnan(crossbasis).any(axis=1))
+    func_data = func_data[na_indx, :]
 
-    lin_reg = linear_regression(crossbasis[na_indx,:], func_data[na_indx, :], return_model=True, 
+    lin_reg = linear_regression(crossbasis[na_indx,:], func_data, return_model=True, 
                                 intercept=False, norm=False)
     
     pred_maps, lag_eval, eval_points = evaluate_model(physio_sig[physio_var], lin_reg, basis_var, basis_lag, 
