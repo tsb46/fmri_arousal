@@ -6,7 +6,7 @@ import pandas as pd
 subject_list_chang = 'data/dataset_chang/subject_list_chang.csv'
 subject_list_chang_bh = 'data/dataset_chang_bh/subject_list_chang_bh.csv'
 subject_list_nki = 'data/dataset_nki/subject_list_nki.csv'
-subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_rest_subset.csv'
+subject_list_hcp = 'data/dataset_hcp/subject_list_hcp_rest.csv'
 subject_list_hcp_rel = 'data/dataset_hcp_task/subject_list_hcp_relational.csv'
 subject_list_hcp_wm = 'data/dataset_hcp_task/subject_list_hcp_wm.csv'
 subject_list_monash = 'data/dataset_monash/subject_list_monash_subset.csv'
