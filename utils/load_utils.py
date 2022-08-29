@@ -129,7 +129,7 @@ def fp_chang_bh(data_type, subj, scan):
     elif data_type == 'hr':
         f_str = f'data/dataset_chang_bh/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_PPG_RATE_NK.txt'
     elif data_type == 'rv':
-        f_str = f'data/dataset_chang_bh/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_RESP_AMP_HILBERT.txt'
+        f_str = f'data/dataset_chang_bh/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_RESP_RVT_NK.txt'
     elif data_type == 'csf':
         f_str = f'data/dataset_chang_bh/physio/raw_csf/sub_00{subj}_mr_{scan_str}.txt'
     elif data_type == 'vigilance':
@@ -149,7 +149,7 @@ def fp_hcp(data_type, subj, scan, fix):
         else:
             f_str = f'data/dataset_hcp/func/proc4_bandpass/{subj}_{scan}1_rest.nii.gz'
     elif (data_type == 'rv') | (data_type == 'rv_amp'):
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_AMP_HILBERT.txt'
+        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_RVT_NK.txt'
     elif data_type == 'rv_rate':
         f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_RATE_NK.txt'
     elif data_type == 'hr':
@@ -216,7 +216,7 @@ def fp_nki(data_type, subj):
     elif data_type == 'hr':
         f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_PPG_HR_NK.txt'
     elif data_type == 'rv':
-        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_RESP_AMP_HILBERT.txt'
+        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_RESP_RVT_NK.txt'
     elif data_type == 'csf':
         f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_csf.txt'
     return f_str
