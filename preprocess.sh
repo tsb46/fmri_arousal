@@ -445,7 +445,7 @@ if [ "$dataset" == "hcp" ]; then
         # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_csf.txt \
         # -m data/dataset_hcp/anat/proc1_csfmask/group_csfmask
 
-    done
+    # done
 
 fi
 
@@ -689,27 +689,58 @@ fi
 # Spreng - FMRI, Physio
 if [ "$dataset" == "spreng" ]; then
     mkdir -p data/dataset_spreng/anat/raw_reorient
-    mkdir -p data/dataset_spreng/anat/proc1_bet
-    mkdir -p data/dataset_spreng/anat/proc2_affine
-    mkdir -p data/dataset_spreng/anat/proc3_fnirt
-
+    # mkdir -p data/dataset_spreng/anat/proc1_bet
+    # mkdir -p data/dataset_spreng/anat/proc2_affine
+    # mkdir -p data/dataset_spreng/anat/proc3_fnirt
+    # mkdir -p data/dataset_spreng/anat/proc4_csfmask
     # echo "Structural preprocessing..."
     # # Structural preprocessing
     # for file_path in data/dataset_spreng/anat/raw/*.nii.gz; do
     #     filename=$(basename $file_path)
     #     echo "$filename"
-    #     # Reorient to standard orientation
-    #     fslreorient2std $file_path data/dataset_spreng/anat/raw_reorient/$filename
-    #     # Brain Extraction
-    #     bet data/dataset_spreng/anat/raw_reorient/$filename data/dataset_spreng/anat/proc1_bet/$filename -o -m
-    #     # Affine registration
-    #     flirt -in data/dataset_spreng/anat/proc1_bet/$filename -ref $FSLDIR/data/standard/MNI152_T1_2mm_brain.nii.gz \
-    #     -out data/dataset_spreng/anat/proc2_affine/$filename -omat data/dataset_spreng/anat/proc2_affine/$filename.mat
-    #     # Nonlinear transformation
-    #     fnirt --ref=$FSLDIR/data/standard/MNI152_T1_2mm.nii.gz --in=data/dataset_spreng/anat/raw_reorient/$filename \
-    #     --iout=data/dataset_spreng/anat/proc3_fnirt/$filename --cout=data/dataset_spreng/anat/proc3_fnirt/$filename.mat \
-    #     --aff=data/dataset_spreng/anat/proc2_affine/$filename.mat --config=T1_2_MNI152_2mm --warpres=6,6,6
+    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
+        # # Reorient to standard orientation
+        # fslreorient2std $file_path data/dataset_spreng/anat/raw_reorient/$filename
+        # # Brain Extraction
+        # bet data/dataset_spreng/anat/raw_reorient/$filename data/dataset_spreng/anat/proc1_bet/$filename -o -m
+        # FAST segmentation
+        # fast data/dataset_spreng/anat/proc1_bet/$filename_base
+        # # Affine registration
+        # flirt -in data/dataset_spreng/anat/proc1_bet/$filename -ref $FSLDIR/data/standard/MNI152_T1_2mm_brain.nii.gz \
+        # -out data/dataset_spreng/anat/proc2_affine/$filename -omat data/dataset_spreng/anat/proc2_affine/$filename.mat
+        # # Nonlinear transformation
+        # fnirt --ref=$FSLDIR/data/standard/MNI152_T1_2mm.nii.gz --in=data/dataset_spreng/anat/raw_reorient/$filename \
+        # --iout=data/dataset_spreng/anat/proc3_fnirt/$filename --cout=data/dataset_spreng/anat/proc3_fnirt/$filename.mat \
+        # --aff=data/dataset_spreng/anat/proc2_affine/$filename.mat --config=T1_2_MNI152_2mm --warpres=6,6,6
+        # Send CSF mask to MNI space
+        # applywarp --ref=masks/MNI152_T1_3mm_brain.nii.gz --in=data/dataset_spreng/anat/proc1_bet/${filename_base}_pve_0  \
+        # --out=data/dataset_spreng/anat/proc4_csfmask/$filename_base --warp="data/dataset_spreng/anat/proc3_fnirt/${filename}.mat.nii.gz" 
+        # # Binarize CSF mask
+        # fslmaths data/dataset_spreng/anat/proc4_csfmask/$filename_base -thr 0.9 -bin \
+        # data/dataset_spreng/anat/proc4_csfmask/$filename_base
     # done
+
+    # # Create group CSF mask
+    # ## remove mask if exists
+    # rm -f data/dataset_spreng/anat/proc4_csfmask/group_csfmask.nii.gz
+    # ## Create empty mask
+    # tmp_files=(data/dataset_spreng/anat/proc4_csfmask/*)    
+    # fslmaths ${tmp_files[0]} -thr 2 data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+    # ## Loop through subjects and add masks
+    # sed -n '2,$p' data/dataset_spreng/subject_list_spreng.csv | while IFS=, read -r id subj other_cols; do
+    #     subj_fp=${subj}_ses-1_T1w
+    #     fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask \
+    #     -add data/dataset_spreng/anat/proc4_csfmask/${subj_fp} \
+    #     data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+    # done
+
+    # # Threshold to >40 subjects overlap in CSF masks
+    # fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask -thr 40 -bin \
+    # data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+
+    # # # Mask by MNI prior probability CSF mask (thresholded)
+    # fslmaths data/dataset_nki/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
+    # data/dataset_nki/anat/proc4_csfmask/group_csfmask
 
     # echo "Functional preprocessing..."
     # mkdir -p data/dataset_spreng/func/proc1_mcflirt
@@ -787,9 +818,14 @@ if [ "$dataset" == "spreng" ]; then
     for file_path in data/dataset_spreng/physio/raw/*.tsv.gz; do
         filename=$(basename $file_path)
         echo "$filename" 
+        subj_file=$(cut -d'_' -f1 <<< "${filename}")
         filename_base=$(cut -d'.' -f1 <<< "${filename}")
-        # HR and RV extraction
-        python -m utils.dataset.preprocess_spreng -s $file_path -o data/dataset_spreng/physio/proc1_physio/$filename_base
+        # # HR and RV extraction
+        # python -m utils.dataset.preprocess_spreng -s $file_path -o data/dataset_spreng/physio/proc1_physio/$filename_base
+        # CSF extraction
+        fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
+        -o data/dataset_spreng/physio/proc1_physio/${filename_base}_csf.txt \
+        -m data/dataset_spreng/anat/proc4_csfmask/group_csfmask
     done
 
    

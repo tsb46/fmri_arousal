@@ -4,6 +4,7 @@ import pandas as pd
 import pickle
 
 from patsy import dmatrix
+from scipy.stats import zscore
 from sklearn.model_selection import TimeSeriesSplit
 from utils.signal.butterworth_filters import butterworth_filter
 
@@ -228,6 +229,25 @@ def load_subj_nki(subj, pc_ts, pc_ts_p, fs, norm=True):
         df[f'trial_{event}'] = block_ts
     return df
 
+
+def load_subj_spreng(subj, pc_ts, pc_ts_p, fs, norm=True):
+    p_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio.csv'
+    csf_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio_csf.txt'
+    df = pd.read_csv(p_str)
+    csf = np.loadtxt(csf_str)
+    df['csf'] = csf
+    df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
+    df['pc1'] = pc_ts[:,0]*-1 # sign flip to keep consistent with Chang PCA
+    df['pc2'] = pc_ts[:,1]
+    df['pc3'] = pc_ts[:,2]
+    df['pc1_p'] = pc_ts_p[:,0]
+    df['pc2_p'] = pc_ts_p[:,1]*-1 # sign flip to keep consistent with Chang PCA
+    df['pc3_p'] = pc_ts_p[:,2]*-1 # sign flip to keep consistent with Chang PCA
+    if norm:
+        df = df.apply(zscore, axis=0)
+    df.reset_index(inplace=True)
+    df = df.rename(columns = {'index':'time'})
+    return df
 
 
 def xcorr(x, y, maxlags=30, constrain='abs'):
