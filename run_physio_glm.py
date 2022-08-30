@@ -12,7 +12,6 @@ from utils.glm_utils import linear_regression, construct_lag_splines, xcorr
 
 
 def cross_corr_maps(func_data, physio, max_lags, n_eval=100):
-    print('cross corr')
     cc_map_max = []
     cc_map_min = []
     x_interp=np.linspace(-max_lags, max_lags, n_eval)
@@ -43,32 +42,35 @@ def run_main(dataset, physio, p_n_lags, n_n_lags, nknots,
     load_data(dataset, 'group', physio=[physio], load_physio=True, regress_global=regress_global_sig) 
 
     physio_data = np.squeeze(np.stack(physio_sig, axis=1))
-    physio_df = pd.DataFrame(physio_data, columns=physio_label)
     if cross_corr:
+        print('cross corr')
         cc_map_max, cc_map_min = cross_corr_maps(func_data, physio_data, cross_corr_max_lag)
+        pred_maps = None
+        pred_lag_vec = None
+        write_results(dataset, physio, pred_maps, pred_lag_vec, cc_map_max, cc_map_min,
+                  zero_mask, n_vert, analysis_params)
     else:
+        physio_df = pd.DataFrame(physio_data, columns=physio_label)
+        # Construct Design matrix using patsy style formula
+        print('construct spline matrix')
+        design_mat, spline_basis = construct_lag_splines(physio_df, p_n_lags, n_n_lags, nknots)
+        # Lag introduces null values - trim beginning of predictor matrix
+        na_indx = ~(np.isnan(design_mat).any(axis=1))
+        func_data = func_data[na_indx, :]
+        design_mat = design_mat[na_indx, :]
+        print('run regression')
+        lin_reg = linear_regression(design_mat, func_data, return_model=True, 
+                                    intercept=False, norm=False)
+        # Get predicted maps at all time lags
+        print('get predicted respone at time lags')
+        pred_lag_vec = np.linspace(-n_n_lags, p_n_lags, n_eval)
+        pred_maps = evaluate_model(pred_lag_vec, lin_reg, spline_basis, var_eval)
+
         cc_map_max = None
         cc_map_min = None
-
-    # Construct Design matrix using patsy style formula
-    print('construct spline matrix')
-    design_mat, spline_basis = construct_lag_splines(physio_df, p_n_lags, n_n_lags, nknots)
-    # Lag introduces null values - trim beginning of predictor matrix
-    na_indx = ~(np.isnan(design_mat).any(axis=1))
-    func_data = func_data[na_indx, :]
-    design_mat = design_mat[na_indx, :]
-    print('run regression')
-    lin_reg = linear_regression(design_mat, func_data, return_model=True, 
-                                intercept=False, norm=False)
-    # Get predicted maps at all time lags
-    print('get predicted respone at time lags')
-    pred_lag_vec = np.linspace(-n_n_lags, p_n_lags, n_eval)
-    pred_maps = evaluate_model(pred_lag_vec, lin_reg, spline_basis, var_eval)
-
-
-    # Write out results
-    write_results(dataset, physio, pred_maps, pred_lag_vec, cc_map_max, cc_map_min,
-                  zero_mask, n_vert, analysis_params)
+        # Write out results
+        write_results(dataset, physio, pred_maps, pred_lag_vec, cc_map_max, cc_map_min,
+                      zero_mask, n_vert, analysis_params)
 
 def write_results(dataset, term, pred_maps, pred_lag_vec, cc_max, cc_min, zero_mask, n_vert, analysis_params):
     analysis_str = f'{dataset}_physio_reg_group_{term}'
