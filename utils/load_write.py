@@ -111,7 +111,7 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None,
     fps = find_fps(data, level, physio, params_data, subj_n, scan_n)
     # Print filter parameters for functional and physio signals
     if verbose:
-        print_filter_info(params_data, load_physio)
+        print_filter_info(params_data, load_physio, physio)
 
     # Pull data for subject level analysis
     if level == 'subject':

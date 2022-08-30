@@ -254,7 +254,7 @@ def load_subject_list(data):
     return subj_list
 
 
-def print_filter_info(params, load_physio):
+def print_filter_info(params, load_physio, physio_list):
     # print filter parameters of functional data
     if params['data']['func']['filter_params']['filter_choice'] == 'raw':
         print(f'no filtering applied to functional data \n')
@@ -272,7 +272,7 @@ def print_filter_info(params, load_physio):
         print(f'{filter_choice} filtering applied to functional data: {low} - {high} Hz \n')
     if load_physio:
         # print filter parameters for physio signals
-        for p in params['physio']:
+        for p in physio_list:
             if params['data']['physio']['filter_params']['filter_choice'][p] == 'raw':
                 print(f'no filtering applied to {p} data \n')
             else:

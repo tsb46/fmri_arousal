@@ -6,7 +6,9 @@ import pickle
 from patsy import dmatrix
 from scipy.stats import zscore
 from sklearn.model_selection import TimeSeriesSplit
+from utils.glm_utils import onsets_to_block
 from utils.signal.butterworth_filters import butterworth_filter
+
 
 # Global variables
 fs_chang = 1/2.1
@@ -116,7 +118,7 @@ def load_subj_chang(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
     gs = np.loadtxt((f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_global_sig.txt'))
     df = pd.concat([physio_df, eeg_bands], axis=1)
     df['csf'] = csf
-    df['gs'] = gs
+    df['global_sig'] = gs
     infraslow = df.pop('Infraslow')
     vigilance_ad = df.pop('vigilance_ad')
     vigilance_at = df.pop('vigilance_at')
@@ -181,19 +183,23 @@ def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True
 def load_subj_hcp(subj, pc_ts, pc_ts_p, fs, norm=True):
     p_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio.csv'
     csf_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_csf.txt'
+    global_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_global_sig.txt'
     df = pd.read_csv(p_str)
     csf = np.loadtxt(csf_str)
+    global_sig = np.loadtxt(global_str)
     df['csf'] = csf
+    df['global_sig'] = global_sig
     ## IMPORTANT! CSF signal has large amplitude spikes at start of scan - set first 10 time points to median
     breakpoint()
     df['csf'].iloc[:10] = df['csf'].median()
+    df['global_sig'].iloc[:10] = df['global_sig'].median()
     df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
-    df['pc1'] = pc_ts[:,0]*-1 # sign flip to keep consistent with Chang PCA
+    df['pc1'] = pc_ts[:,0]
     df['pc2'] = pc_ts[:,1]*-1 # sign flip to keep consistent with Chang PCA
-    df['pc3'] = pc_ts[:,2]
-    df['pc1_p'] = pc_ts_p[:,0]*-1 # sign flip to keep consistent with Chang PCA
+    df['pc3'] = pc_ts[:,2]*-1 # sign flip to keep consistent with Chang PCA
+    df['pc1_p'] = pc_ts_p[:,0]
     df['pc2_p'] = pc_ts_p[:,1]*-1 # sign flip to keep consistent with Chang PCA
-    df['pc3_p'] = pc_ts_p[:,2]
+    df['pc3_p'] = pc_ts_p[:,2]*-1 # sign flip to keep consistent with Chang PCA
     if norm:
         df = df.apply(zscore, axis=0)
     df.reset_index(inplace=True)
@@ -233,9 +239,12 @@ def load_subj_nki(subj, pc_ts, pc_ts_p, fs, norm=True):
 def load_subj_spreng(subj, pc_ts, pc_ts_p, fs, norm=True):
     p_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio.csv'
     csf_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio_csf.txt'
+    global_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio_global_sig.txt'
     df = pd.read_csv(p_str)
     csf = np.loadtxt(csf_str)
+    global_sig = np.loadtxt(global_str)
     df['csf'] = csf
+    df['global_sig'] = global_sig
     df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
     df['pc1'] = pc_ts[:,0]*-1 # sign flip to keep consistent with Chang PCA
     df['pc2'] = pc_ts[:,1]
@@ -250,19 +259,7 @@ def load_subj_spreng(subj, pc_ts, pc_ts_p, fs, norm=True):
     return df
 
 
-def xcorr(x, y, maxlags=30, constrain='abs'):
-    Nx = len(x)
-    if Nx != len(y):
-        raise ValueError('x and y must be equal length')
-    c = np.correlate(x, y, mode=2)
-    c /= np.sqrt(np.dot(x, x) * np.dot(y, y))
-    if maxlags is None:
-        maxlags = Nx - 1
-    if maxlags >= Nx or maxlags < 1:
-        raise ValueError('maglags must be None or strictly '
-                         'positive < %d' % Nx)
-    lags = np.arange(-maxlags, maxlags + 1)
-    c = c[Nx - 1 - maxlags:Nx + maxlags]
+def xcorr_select_max(c, lags, constrain='abs'):
     if constrain == 'abs':
         max_r = c[np.argsort(np.abs(c))[-1]]
         max_lag = lags[np.argsort(np.abs(c))[-1]]

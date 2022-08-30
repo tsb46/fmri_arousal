@@ -3,6 +3,7 @@ import pandas as pd
 
 from patsy import dmatrix
 from scipy.stats import gamma, zscore
+from scipy.signal import correlate
 from sklearn.linear_model import LinearRegression, Ridge
 
 
@@ -163,6 +164,18 @@ def onsets_to_block(df, scan_len, tr):
         block_ts.append(np.arange(tr_event, tr_event+tr_dur))
 
     return block_ts
+
+
+def xcorr(x, y, maxlags=30):
+    # adjusted cross-correlation between two (equal-length) signals
+    # https://www.statsmodels.org/dev/generated/statsmodels.tsa.stattools.ccf.html
+    n = len(x)
+    xo = x - x.mean()
+    yo = y - y.mean()
+    lags = np.arange(-maxlags, maxlags + 1)
+    c_cov = correlate(xo, yo, "full", method='fft')/ n
+    c_corr = c_cov/(np.std(x) * np.std(y))
+    return lags, c_corr[n - 1 - maxlags:n + maxlags]
 
 
 
