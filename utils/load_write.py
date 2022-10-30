@@ -72,22 +72,6 @@ def load_chang_bh_event_file():
     return events
 
 
-def load_hcp_task_event_file(ev_dir, task):
-    if task == 'hcp_rel':
-        rel = np.loadtxt(f'{ev_dir}/relation.txt', unpack=True)
-        match = np.loadtxt(f'{ev_dir}/match.txt', unpack=True)
-        all_trials = np.concatenate([rel, match], axis=1)
-    elif task == 'hcp_wm':
-        bk_str = ['0bk', '2bk']
-        stimuli_str = ['body', 'faces', 'tools', 'places']
-        all_trials = [np.loadtxt(f'{ev_dir}/{bk}_{stimuli}.txt', unpack=True) 
-                      for bk in bk_str for stimuli in stimuli_str]
-        all_trials = np.vstack(all_trials).T
-    all_trials = {['onset','duration'][i]: all_trials[i] for i in range(2)}
-    trials_df = pd.DataFrame(all_trials).sort_values(by='onset')
-    return trials_df
-
-
 def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, 
               group_method='stack', physio_group_method='stack', 
               verbose=True, filter_nan_voxels=True, regress_global=False):

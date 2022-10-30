@@ -22,27 +22,32 @@ physio_prefix = ['ppg', 'resp']
 
 
 def process_physio(physio_signals):
-    ## Resp signals
+    # Resp signals
     resp_signals_nk = nk_extract_physio(physio_signals['resp'], 'resp', sf, 
                                         n_scan, lowpass=0.15)
     resp_signals_window = trigger_extract_physio(physio_signals['resp'], 'resp', 
                                                  n_scan, sf_func, sf)
     
-    ## PPG signals
+    # PPG signals
     ppg_signals_nk = nk_extract_physio(physio_signals['ppg'], 'ppg', sf, 
                                        n_scan, lowpass=0.15)
     ppg_signals_window = trigger_extract_physio(physio_signals['ppg'], 'ppg', 
                                                 n_scan, sf_func, sf)
+
+    # GSR signals
+    gsr_signals_nk = nk_extract_physio(physio_signals['gsr'], 'gsr', sf, n_scan)
 
     # Create physio df
     physio_list = [ppg_signals_nk['PPG_Rate'].values.tolist(), ppg_signals_window, 
                    ppg_signals_nk['PPG_LOW'].values.tolist(), ppg_signals_nk['PPG_RMS_AMP'].values.tolist(),
                    ppg_signals_nk['PPG_PEAK_AMP'].values.tolist(),resp_signals_nk['RSP_Rate'].values.tolist(), 
                    resp_signals_nk['RSP_Amplitude'].values.tolist(),resp_signals_nk['RSP_RVT'].values.tolist(), 
-                   resp_signals_nk['RSP_AMP_HILBERT'].values.tolist(), resp_signals_window]
+                   resp_signals_nk['RSP_AMP_HILBERT'].values.tolist(), resp_signals_window,
+                   gsr_signals_nk['GSR']]
 
     physio_labels = ['PPG_HR_NK', 'PPG_HR_W', 'PPG_LOW_NK', 'PPG_RMS_AMP', 'PPG_PEAK_AMP', 
-                     'RESP_RATE_NK', 'RESP_AMP_NK', 'RESP_RVT_NK', 'RESP_AMP_HILBERT', 'RESP_VAR_W']
+                     'RESP_RATE_NK', 'RESP_AMP_NK', 'RESP_RVT_NK', 'RESP_AMP_HILBERT', 'RESP_VAR_W', 
+                     'GSR']
     physio_df = pd.DataFrame({label: col for label, col in zip(physio_labels, physio_list)})
 
     # Forward fill ppg (window) signal 

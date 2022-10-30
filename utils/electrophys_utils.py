@@ -118,15 +118,9 @@ def nk_extract_ecg_signals(ts, sf):
     return rpeaks[['ECG_Rate']]
 
 
-def nk_extract_emg_signals(ts, sf):
-    # Process EMG signals
-    """ Not a high enough sampling frequency for dream dataset (200 Hz) 
-    for now just take the Hilbert envelope"""
-    # Apply highpass filter (5Hz) to remove slow drifts
-    # ts_filt = butterworth_filter(ts, 5, None, sf, 'highpass')
-    # emg_amp = np.abs(hilbert(ts_filt))
-    emg_df = pd.DataFrame({'EMG_AMP': ts})
-    return emg_df
+def nk_extract_gsr_signals(ts, sf, bp_filt=[0.01, 0.1]):
+    ts_filt = butterworth_filter(ts, bp_filt[0], bp_filt[1], sf, 'bandpass') 
+    return pd.DataFrame({'GSR': ts_filt})
 
 
 def nk_extract_ppg_signals(ts, sf, w=6):
@@ -164,31 +158,18 @@ def nk_extract_resp_signals(ts, sf):
     return r_signals
 
 
-def nk_extract_map(ts_dbp, ts_sbp, sf, bp_filt=(0.01, 0.1)):
-    # filter to typical resting-state BOLD range
-    ts_dbp_filt = butterworth_filter(ts_dbp, bp_filt[0], bp_filt[1], sf, 'bandpass')
-    ts_sbp_filt = butterworth_filter(ts_sbp, bp_filt[0], bp_filt[1], sf, 'bandpass')
-    # Calculate MAP
-    ts_map = ts_dbp_filt*(2/3) + ts_sbp_filt*(1/3)
-    return pd.DataFrame(ts_map, columns=['MAP'])
-
-
 def nk_extract_physio(ts, phys_label, sf_physio, func_len=None, lowpass=None, 
                       resample=True, clip=True):
-    # Neurokit physio preprocessing - output of nk extractor functions are Pandas dfs
-    # If blood pressure, separate dbp and sbp
-    if phys_label == 'bpp':
-        # Assume dbp is first indx (double check this )
-        ts_dbp, ts_sbp = ts[0], ts[1]
-        phys_ts = nk_extract_map(ts_dbp, ts_sbp, sf_physio)
-    elif phys_label == 'ecg':
+    # Neurokit physio preprocessing - output of nk extractor functions are Pandas dfs  
+    if phys_label == 'ecg':
         phys_ts = nk_extract_ecg_signals(ts, sf_physio)
+    elif phys_label == 'gsr':
+        phys_ts = nk_extract_gsr_signals(ts, sf_physio)
     elif phys_label == 'resp':
         phys_ts = nk_extract_resp_signals(ts, sf_physio)
     elif phys_label == 'ppg':
         phys_ts = nk_extract_ppg_signals(ts, sf_physio)
-    elif phys_label == 'emg':
-        phys_ts = nk_extract_emg_signals(ts, sf_physio)
+  
 
     # resample physio to functional scans
     if clip:
