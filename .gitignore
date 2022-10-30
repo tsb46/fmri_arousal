@@ -133,10 +133,10 @@ dmypy.json
 data/dataset_chang/*/
 data/dataset_nki/*/
 data/dataset_hcp/*/
-data/dataset_hcp_task/*/
 data/dataset_chang_bh/*/
-data/dataset_monash/*/
 data/dataset_spreng/*/
+data/dataset_yale/*/
+
 
 
 

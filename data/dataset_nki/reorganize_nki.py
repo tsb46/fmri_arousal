@@ -7,13 +7,10 @@ os.makedirs('func/raw', exist_ok=True)
 os.makedirs('physio/raw', exist_ok=True)
 os.makedirs('events', exist_ok=True)
 
-
-
 anat = lambda x, y: f'raw/sub-{x}/ses-{y}/anat/sub-{x}_ses-{y}_T1w'
 func = lambda x, y: f'raw/sub-{x}/ses-{y}/func/sub-{x}_ses-{y}_task-BREATHHOLD_acq-1400_bold'
 events = lambda x, y: f'raw/sub-{x}/ses-{y}/func/sub-{x}_ses-{y}_task-BREATHHOLD_acq-1400_events'
 physio = lambda x, y: f'raw/sub-{x}/ses-{y}/func/sub-{x}_ses-{y}_task-BREATHHOLD_acq-1400_physio'
-
 
 # Move all subject files
 subj_list = []
