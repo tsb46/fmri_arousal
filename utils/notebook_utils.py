@@ -15,6 +15,7 @@ fs_chang = 1/2.1
 fs_hcp = 1/0.72
 fs_nki = 1/1.4
 fs_spreng = 1/3.0
+fs_yale = 1.0
 
 
 def commonality_analysis(pc_norm, full_pred, pred_label, pred_label_col_indx):
@@ -78,28 +79,42 @@ def timeseries_cv(model, X, y, n_splits, gap, max_train_size, test_size):
     return corr_split
 
 
-def load_pca_results(subject_df, pca_fp, pca_p_fp, n_len, scan_ind=False):
+def load_pca_results(subject_df, pca_fp, pca_p_fp, n_len, pca_c_fp=None, scan_ind=False, scan_len=None):
     pca_output = pickle.load(open(pca_fp, 'rb'))
     pca_output_p = pickle.load(open(pca_p_fp, 'rb'))
 
     pc_ts = pca_output['pc_scores']
     pc_ts_p = pca_output_p['pc_scores']
 
+    if pca_c_fp is not None:
+        pca_output_c = pickle.load(open(pca_c_fp, 'rb'))
+        pc_ts_c = pca_output_c['pc_scores']
+        pc_ts_c = pc_ts_c
+
     n_t = 0
     pc_subj = {}
     pc_p_subj = {}
-    for i, subj in enumerate(subject_df.subject):
+    pc_c_subj = {}
+
+    if scan_len is None:
+        n_len = np.repeat(n_len, subject_df.shape[0])
+    else:
+        n_len = scan_len
+    for i, (subj, subj_len) in enumerate(zip(subject_df.subject, n_len)):
         if scan_ind:
             scan = int(subject_df.iloc[i,:]['scan'])
             subj_str = f'{subj}_{scan}'
         else:
             subj_str = f'{subj}'
         # Extract subject PC time series
-        pc_subj[subj_str] = pc_ts[n_t:(n_t+n_len),:]
+        pc_subj[subj_str] = pc_ts[n_t:(n_t+subj_len),:]
         # Extract subject PC-Promax time series
-        pc_p_subj[subj_str] = pc_ts_p[n_t:(n_t+n_len),:]
-        n_t += n_len
-    return pc_subj, pc_p_subj
+        pc_p_subj[subj_str] = pc_ts_p[n_t:(n_t+subj_len),:]
+        if pca_c_fp is not None:
+            pc_c_subj[subj_str] = pc_ts_c[n_t:(n_t+subj_len),:]
+
+        n_t += subj_len
+    return pc_subj, pc_p_subj, pc_c_subj
         
 
 
@@ -120,8 +135,9 @@ def load_subj_chang(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
     df['csf'] = csf
     df['global_sig'] = gs
     infraslow = df.pop('Infraslow')
-    vigilance_ad = df.pop('vigilance_ad')
-    vigilance_at = df.pop('vigilance_at')
+    vigilance_ad = df['vigilance_ad'].copy()
+    vigilance_at = df['vigilance_at'].copy()
+    resp_rvt = df['RESP_RVT_NK'].copy()
     if bp_filter:
         df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
     df['Infraslow'] = infraslow
@@ -135,6 +151,7 @@ def load_subj_chang(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
     df['vigilance_at'] = vigilance_at
     df['vigilance_ad_low'] =  butterworth_filter(vigilance_ad, None, 0.01, fs=fs, filter_type='lowpass')
     df['vigilance_at_low'] = butterworth_filter(vigilance_at, None, 0.01, fs=fs, filter_type='lowpass')
+    df['RESP_RVT_NK_low'] = butterworth_filter(resp_rvt, None, 0.01, fs=fs, filter_type='lowpass')
     if norm:
         df = df.apply(zscore, axis=0)
     df.reset_index(inplace=True)
@@ -142,7 +159,7 @@ def load_subj_chang(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
     return df
 
 
-def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
+def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, pc_ts_c, fs, norm=True, bp_filter=True):
     if scan < 10:
         scan_str = f'000{scan}'
     else:
@@ -175,6 +192,7 @@ def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True
     df['vigilance_at_low'] = butterworth_filter(vigilance_at, None, 0.01, fs=fs, filter_type='lowpass')
     if norm:
         df = df.apply(zscore, axis=0)
+    df['pc1_c'] = pc_ts_c[:,0] # don't normalize phase angle ts
     df.reset_index(inplace=True)
     df = df.rename(columns = {'index':'time'})
     return df
@@ -190,7 +208,6 @@ def load_subj_hcp(subj, pc_ts, pc_ts_p, fs, norm=True):
     df['csf'] = csf
     df['global_sig'] = global_sig
     ## IMPORTANT! CSF signal has large amplitude spikes at start of scan - set first 10 time points to median
-    breakpoint()
     df['csf'].iloc[:10] = df['csf'].median()
     df['global_sig'].iloc[:10] = df['global_sig'].median()
     df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
@@ -216,9 +233,9 @@ def load_subj_nki(subj, pc_ts, pc_ts_p, fs, norm=True):
     df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
     df['pc1'] = pc_ts[:,0]*-1 # sign flip to keep consistent with Chang PCA
     df['pc2'] = pc_ts[:,1]
-    df['pc1_p'] = pc_ts_p[:,0]
-    df['pc6_p'] = pc_ts_p[:,6]
-    df['pc8_p'] = pc_ts_p[:,8]
+    df['pc1_p'] = pc_ts_p[:,0]*-1
+    df['pc2_p'] = pc_ts_p[:,1]
+    df['pc3_p'] = pc_ts_p[:,2]*-1
     if norm:
         df = df.apply(zscore, axis=0)
     df.reset_index(inplace=True)
@@ -248,10 +265,30 @@ def load_subj_spreng(subj, pc_ts, pc_ts_p, fs, norm=True):
     df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
     df['pc1'] = pc_ts[:,0]*-1 # sign flip to keep consistent with Chang PCA
     df['pc2'] = pc_ts[:,1]
-    df['pc3'] = pc_ts[:,2]
+    df['pc3'] = pc_ts[:,3]*-1
     df['pc1_p'] = pc_ts_p[:,0]
-    df['pc2_p'] = pc_ts_p[:,1]*-1 # sign flip to keep consistent with Chang PCA
-    df['pc3_p'] = pc_ts_p[:,2]*-1 # sign flip to keep consistent with Chang PCA
+    df['pc2_p'] = pc_ts_p[:,1]*-1 
+    df['pc3_p'] = pc_ts_p[:,2]*-1 
+    if norm:
+        df = df.apply(zscore, axis=0)
+    df.reset_index(inplace=True)
+    df = df.rename(columns = {'index':'time'})
+    return df
+
+
+def load_subj_yale(subj, scan, pc_ts, pc_ts_p, fs, norm=True):
+    p_str = f'data/dataset_yale/physio/raw/{subj}_task-rest_run-0{scan}_et.txt'
+    csf_str = f'data/dataset_yale/physio/proc1_physio/{subj}_task-rest_run-0{scan}_bold_csf.txt'
+    df = pd.read_csv(p_str, sep=' ', header=None)
+    df.columns = ['pupil']
+    df['csf'] = np.loadtxt(csf_str)
+    df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
+    df['pc1'] = pc_ts[:,0]*-1 # sign flip to keep consistent with Chang PCA
+    df['pc2'] = pc_ts[:,1]*-1
+    df['pc3'] = pc_ts[:,2]
+    df['pc1_p'] = pc_ts_p[:,0]*-1
+    df['pc2_p'] = pc_ts_p[:,1]*-1 
+    df['pc3_p'] = pc_ts_p[:,2]
     if norm:
         df = df.apply(zscore, axis=0)
     df.reset_index(inplace=True)

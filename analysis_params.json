@@ -289,5 +289,54 @@
 				}
 			}
 		}
+	},
+	"yale": {
+		"tr": 1,
+		"physio": ["pupil"],
+		"nscans": 54,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"concat_method": "zscore",
+				"filter_params": {
+					"filter_choice": {
+						"pupil": "bandpass"
+					},
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					},
+					"despike": 1,
+					"despike_params" : {
+						"widths": 3,
+						"min_snr": 2,
+						"noise_perc": 5,
+						"window_size": 100,
+						"interpolation_window": [2,2]
+					}
+				}
+			}
+		}
 	}
 }
