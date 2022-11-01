@@ -53,7 +53,7 @@ def run_main(dataset, parcellation, physio, n_lags, lag_nknots, var_nknots, regr
                                 intercept=False, norm=False)
 
     # Free up memory
-    del func_data, design_mat, parcel_ts_orig
+    del func_data, parcel_ts_orig
     
     # Predict individual voxel ts from design mat
     func_data_pred = lin_reg.predict(design_mat)

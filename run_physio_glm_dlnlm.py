@@ -80,6 +80,11 @@ def reshape_output(pred_mat, n_var, n_lag):
         pred_list.append(v_pred_mat)
     return pred_list
 
+def save_func_pred(design_mat, lin_reg, dataset):
+    func_data_pred = lin_reg.predict(design_mat)
+    analysis_str = f'{dataset}_dlnm_group_func_pred'
+    pickle.dump(func_data_pred, open(analysis_str, 'wb'))
+
 
 def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_vert, params):
     if level == 'group':
@@ -87,7 +92,7 @@ def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_ver
     write_nifti(beta_map, analysis_str, zero_mask, n_vert, params['mask'])
 
 
-def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag_eval):
+def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag_eval, save_pred):
     func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', physio=[physio_var],
                                                                                 load_physio=True, verbose=True) 
     # Create dataframe of physio signals
@@ -103,7 +108,10 @@ def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag
 
     lin_reg = linear_regression(crossbasis[na_indx,:], func_data, return_model=True, 
                                 intercept=False, norm=False)
-    
+    if save_pred:
+        del func_data # free up memory
+        save_pred(cross_basis[na_indx,:], lin_reg, dataset)
+
     pred_maps, lag_eval, eval_points = evaluate_model(physio_sig[physio_var], lin_reg, basis_var, basis_lag, 
                                physio_eval, lag_eval, nlags, func_data.shape[1])
     pred_maps = np.stack(pred_maps,axis=2)
@@ -145,21 +153,27 @@ if __name__ == '__main__':
                         required=False,
                         type=int)  
     parser.add_argument('-pe', '--physio_var_evaluate',
-                        help='<Required> for model predictions, what # of values of the physio '
+                        help='for model predictions, what # of values of the physio '
                         'variable to evaluate on the fitted model.',
                         required=False,
                         default=7,
                         type=str)
     parser.add_argument('-le', '--lag_evaluate',
-                        help='<Required> for model predictions, what # of equally spaced values between '
+                        help='for model predictions, what # of equally spaced values between '
                         ' min and max lag to evaluate on the fitted model.',
                         required=False,
                         default=40,
                         type=str)
+    parser.add_argument('-s', '--save_func_pred',
+                        help='whether to save the predicted functional BOLD data (will be very large)',
+                        required=False,
+                        default=0,
+                        type=int)
 
 
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['physio_var'], args_dict['nlags'], 
              args_dict['var_nknots'], args_dict['lag_nknots'], 
-             args_dict['physio_var_evaluate'], args_dict['lag_evaluate'])
+             args_dict['physio_var_evaluate'], args_dict['lag_evaluate'],
+             args_dict['save_func_pred'])
 

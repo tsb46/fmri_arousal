@@ -42,7 +42,7 @@ def write_results(dataset,recon_comp, n_comp, zero_mask, n_vert, params):
     write_nifti(recon_comp, analysis_str, zero_mask, n_vert, params['mask'])
 
 
-def run_main(dataset, cpca_res, n_recon, n_bins, rotation, real=True):
+def run_main(dataset, cpca_res, n_recon, n_bins, rotation, shift_angles, real=True):
     # Not ideal to load full group data; only needed to get brain_mask to write nifti
     _, _, _, zero_mask, n_vert, params = load_data(dataset, 'group', physio=None, load_physio=False) 
     cpca_res = pickle.load(open(cpca_res, 'rb'))
@@ -50,7 +50,9 @@ def run_main(dataset, cpca_res, n_recon, n_bins, rotation, real=True):
     bin_centers_all = []
     for n in range(n_recon):
         recon_ts = reconstruct_ts(cpca_res, [n], real, rotation)
-        phase_ts = np.angle(cpca_res['pc_scores'][:,n]) 
+        phase_ts = np.angle(cpca_res['pc_scores'][:,n])
+        if shift_angles:
+            phase_ts = np.mod(phase_ts, 2*np.pi)
         bin_indx, bin_centers = create_bins(phase_ts, n_bins)
         dynamic_phase_map = create_dynamic_phase_maps(recon_ts, bin_indx, n_bins)
         bin_indx_all.append(bin_indx); bin_centers_all.append(bin_centers)
@@ -63,7 +65,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Reconstruct cPCA Components from group cPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix'], 
+                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix', 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-i', '--input_cpca',
@@ -84,7 +86,12 @@ if __name__ == '__main__':
                         default=0,
                         required=False,
                         type=int)
+    parser.add_argument('-s', '--shift_angles',
+                        help='Whether to shift phase delay angles from -pi to pi -> 0 to 2*pi',
+                        default=0,
+                        required=False,
+                        type=int)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['input_cpca'], 
              args_dict['n_reconstruct'], args_dict['n_bins'],
-             args_dict['rotation'])
+             args_dict['rotation'], args_dict['shift_angles'])

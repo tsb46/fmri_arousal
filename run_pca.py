@@ -86,7 +86,7 @@ def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate, 
         func_data -= func_data.mean(axis=1, keepdims=True)
     if pca_type == 'complex':
         print('hilbert')
-        # Hack to get HCP data through analysis without memory error
+        # Convert to single float - hack to get HCP data through analysis without memory error
         func_data = np.single(func_data)
         func_data = hilbert_transform(func_data)
     print('pca')
@@ -105,9 +105,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run PCA or CPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'nki', 'hcp', 'hcp_fix', 
-                                 'hcp_rel', 'hcp_wm', 'monash', 'monash_pet', 
-                                 'spreng'], 
+                        choices=['chang', 'chang_bh', 'nki', 'hcp', 
+                                 'hcp_fix', 'spreng', 'yale'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',

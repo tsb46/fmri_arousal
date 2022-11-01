@@ -8,6 +8,7 @@ from utils.load_write import load_data, write_nifti
 from scipy.signal import find_peaks
 from scipy.stats import zscore
 
+
 def average_peak_window(peak_indx, group_data, l_window, r_window):
 	windows = []
 	for peak in peak_indx:
@@ -26,7 +27,6 @@ def find_physio_peaks(physio_ts, min_thres, max_thres, peak_distance, pos_neg):
 
 	if max_thres is not None:
 		peaks_max_indx = np.where(peaks[1]['peak_heights']<max_thres)[0]
-		breakpoint()
 		peaks = peaks[0][peaks_max_indx]
 	else:
 		peaks = peaks[0]
@@ -51,8 +51,8 @@ def run_main(dataset, physio, pos_neg, l_window, r_window,
              min_peak_thres, max_peak_thres, peak_distance, n_samples=100):
 	# Load data
 	func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', 
-	                                                                       physio=physio, 
-	                                                                       load_physio=True) 
+	                                                                            physio=[physio], 
+	                                                                            load_physio=True) 
 	# Normalize func data
 	func_data = zscore(func_data)
 	for physio_ts, label in zip(physio_sig, physio_labels):
@@ -74,7 +74,7 @@ if __name__ == '__main__':
 	                                 'physio time series')
 	parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix'], 
+                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix', 'spreng'], 
                         required=True,
                         type=str)
 	parser.add_argument('-v', '--pos_v_neg',
@@ -84,9 +84,8 @@ if __name__ == '__main__':
 						type=str)
 	parser.add_argument('-p', '--physio',
 						help='select physio - can provide multiple (separated by space)',
-						required=False,
+						required=True,
 						default=None,
-						action='append',
 						type=str)
 	parser.add_argument('-lw', '--left_window_size',
 	                    help='Length of left window from selected peak', 
