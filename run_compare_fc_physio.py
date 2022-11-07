@@ -85,8 +85,7 @@ if __name__ == '__main__':
                        type=str)
     parser.add_argument('-p', '--physio',
                         help='select physio',
-                        required=False,
-                        default=None,
+                        required=True,
                         type=str)
     parser.add_argument('-l', '--nlags',
                         help='Number of lags',
