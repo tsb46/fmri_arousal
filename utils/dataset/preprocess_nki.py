@@ -24,13 +24,13 @@ physio_prefix = ['ppg', 'resp']
 def process_physio(physio_signals):
     # Resp signals
     resp_signals_nk = nk_extract_physio(physio_signals['resp'], 'resp', sf, 
-                                        n_scan, lowpass=0.15)
+                                        n_scan)
     resp_signals_window = trigger_extract_physio(physio_signals['resp'], 'resp', 
                                                  n_scan, sf_func, sf)
     
     # PPG signals
     ppg_signals_nk = nk_extract_physio(physio_signals['ppg'], 'ppg', sf, 
-                                       n_scan, lowpass=0.15)
+                                       n_scan)
     ppg_signals_window = trigger_extract_physio(physio_signals['ppg'], 'ppg', 
                                                 n_scan, sf_func, sf)
 

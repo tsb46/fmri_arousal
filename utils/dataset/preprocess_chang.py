@@ -141,19 +141,19 @@ def filter_infraslow(eeg):
 def process_physio(physio_dict, sf_resamp, func_len):
     ## Preprocess ECG signals from ECG
     ecg = physio_dict['ecg'].T
-    ecg_signals_nk = nk_extract_physio(ecg, 'ecg', sf_resamp, func_len, lowpass=0.15)
+    ecg_signals_nk = nk_extract_physio(ecg, 'ecg', sf_resamp, func_len)
     
     ## Preprocess Resp signals
     resp = physio_dict['resp']
     # neurokit preprocessing
-    resp_signals_nk = nk_extract_physio(resp, 'resp', sf_resamp, func_len, lowpass=0.15)
+    resp_signals_nk = nk_extract_physio(resp, 'resp', sf_resamp, func_len)
     # trigger-based preprocessing
     resp_signals_window = trigger_extract_physio(resp, 'resp', func_len, sf_func, sf_resamp)
 
     ## Preprocess PPG signals
     ppg = physio_dict['ppg']
     # neurokit preprocessing
-    ppg_signals_nk = nk_extract_physio(ppg, 'ppg', sf_resamp, func_len, lowpass=0.15)
+    ppg_signals_nk = nk_extract_physio(ppg, 'ppg', sf_resamp, func_len)
     # trigger-based preprocessing
     ppg_signals_window = trigger_extract_physio(ppg, 'ppg', func_len, sf_func, sf_resamp)
 

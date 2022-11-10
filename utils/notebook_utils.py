@@ -159,7 +159,7 @@ def load_subj_chang(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
     return df
 
 
-def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, pc_ts_c, fs, norm=True, bp_filter=True):
+def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
     if scan < 10:
         scan_str = f'000{scan}'
     else:
@@ -192,7 +192,6 @@ def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, pc_ts_c, fs, norm=True, bp_fi
     df['vigilance_at_low'] = butterworth_filter(vigilance_at, None, 0.01, fs=fs, filter_type='lowpass')
     if norm:
         df = df.apply(zscore, axis=0)
-    df['pc1_c'] = pc_ts_c[:,0] # don't normalize phase angle ts
     df.reset_index(inplace=True)
     df = df.rename(columns = {'index':'time'})
     return df
