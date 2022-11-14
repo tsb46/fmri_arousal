@@ -90,8 +90,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run Physio GLM w/ Time-lag Spline Regressors')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'hcp', 'hcp_fix', 
-                                 'hcp_rel', 'hcp_wm', 'spreng'], 
+                        choices=['chang', 'nki', 'hcp', 'hcp_fix', 'yale',
+                                 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-p', '--physio',
@@ -111,7 +111,7 @@ if __name__ == '__main__':
                         type=int)   
     parser.add_argument('-k', '--nknots',
                         help='Number of knots in spline basis',
-                        default=3, 
+                        default=4, 
                         required=False,
                         type=int)    
     parser.add_argument('-g', '--regress_global_sig',
@@ -121,7 +121,7 @@ if __name__ == '__main__':
                         type=int)
     parser.add_argument('-e', '--n_eval',
                         help='Number of equally spaced samples to evaluate model response between time lags',
-                        default=20, 
+                        default=40, 
                         required=False,
                         type=int) 
     parser.add_argument('-t', '--cross_corr_maps',

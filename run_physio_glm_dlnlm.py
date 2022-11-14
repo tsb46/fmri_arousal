@@ -10,39 +10,35 @@ from utils.load_utils import load_subject_list
 from utils.load_write import load_data, write_nifti
 
 
-def construct_crossbasis(pvar, nlags, var_nknots, lag_nknots, q1=0.05, q2=0.95):
+def construct_crossbasis(pvar, p_nlags, n_nlags, var_nknots, lag_nknots, q1=0.05, q2=0.95):
     # Get array of equally spaced quantiles for physio var
     var_quant = np.linspace(q1,q2,var_nknots)
     varknots = pvar.quantile(var_quant).values
-    # Get array of log-spaced lag values
-    # lagknots = np.exp(((1+np.log(nlags))/(lag_nknots+1))*np.arange(lag_nknots)) - 1
-    lag_quant = np.linspace(q1,q2,lag_nknots)
-    lagknots = np.quantile(np.arange(nlags+1), lag_quant)
     # Create lag sequence array (include lag of 0!)
-    seq_lag = np.arange(nlags+1)
+    seq_lag = np.arange(-n_nlags, p_nlags+1)
     # Create Cubic B-spline basis for predictor and lag
     basis_var = dmatrix("cr(x, knots=varknots) - 1", {"x": pvar}, return_type='dataframe')
-    basis_lag = dmatrix("cr(x, knots=lagknots) - 1", 
+    basis_lag = dmatrix("cr(x, df=lag_nknots) - 1", 
                         {"x": seq_lag}, return_type='dataframe')
     # Intialize crossbasis matrix
     crossbasis = np.zeros((len(pvar), basis_var.shape[1]*basis_lag.shape[1]))
     # Loop through predictor and lag bases and multiply column pairs
     indx = 0
     for v in np.arange(basis_var.shape[1]):
-        lag_mat = pd.concat([basis_var.iloc[:,v].shift(i) for i in range(nlags+1)], axis=1)
+        lag_mat = pd.concat([basis_var.iloc[:,v].shift(i) for i in seq_lag], axis=1)
         for l in np.arange(basis_lag.shape[1]):
             crossbasis[:, indx] = np.dot(lag_mat.values, basis_lag.iloc[:,l].values)
             indx+=1
     return crossbasis, basis_var, basis_lag
     
 
-def evaluate_model(pvar, lin_reg, basis_var, basis_lag, physio_eval, lag_eval, nlags, n_voxels,
-                   q1=0.01, q2=0.99):
+def evaluate_model(pvar, lin_reg, basis_var, basis_lag, physio_eval, lag_eval, p_nlags, n_nlags,
+                   n_voxels, q1=0.5, q2=0.99):
     # Get equally spaced percentiles of predictor var to evaluate (based on physio_eval) 
     var_quant = np.linspace(q1,q2, physio_eval)
     var_pred_array = pvar.quantile(var_quant).values
     # Create lag sequence array (include lag of 0!)
-    seq_lag = np.linspace(0, nlags+1, lag_eval)
+    seq_lag = np.linspace(-n_nlags, p_nlags, lag_eval)
     # Create repeated values of pred and lag array for all possible pairwise combos
     varvec = np.tile(var_pred_array, len(seq_lag))
     lagvec = np.repeat(seq_lag,len(var_pred_array))
@@ -92,7 +88,8 @@ def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_ver
     write_nifti(beta_map, analysis_str, zero_mask, n_vert, params['mask'])
 
 
-def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag_eval, save_pred):
+def run_main(dataset, physio_var, p_nlags, n_nlags, var_nknots, lag_knots, 
+             physio_eval, lag_eval, save_pred):
     func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', physio=[physio_var],
                                                                                 load_physio=True, verbose=True) 
     # Create dataframe of physio signals
@@ -100,8 +97,7 @@ def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag
                               columns=physio_labels)
 
     # Construct Design matrix using patsy style formula
-    crossbasis, basis_var, basis_lag = construct_crossbasis(physio_sig[physio_var], 
-                                                            nlags, var_nknots, lag_knots)
+    crossbasis, basis_var, basis_lag = construct_crossbasis(physio_sig[physio_var], p_nlags, n_nlags, var_nknots, lag_knots)
     # Lag introduces null values - trim beginning of predictor matrix
     na_indx = ~(np.isnan(crossbasis).any(axis=1))
     func_data = func_data[na_indx, :]
@@ -113,7 +109,7 @@ def run_main(dataset, physio_var, nlags, var_nknots, lag_knots, physio_eval, lag
         save_pred(cross_basis[na_indx,:], lin_reg, dataset)
 
     pred_maps, lag_eval, eval_points = evaluate_model(physio_sig[physio_var], lin_reg, basis_var, basis_lag, 
-                               physio_eval, lag_eval, nlags, func_data.shape[1])
+                                                      physio_eval, lag_eval, p_nlags, n_nlags, func_data.shape[1])
     pred_maps = np.stack(pred_maps,axis=2)
 
     pickle.dump([lin_reg, lag_eval, eval_points], open(f'{dataset}_dlnm_group_results.pkl', 'wb'))
@@ -135,11 +131,16 @@ if __name__ == '__main__':
                         help='<Required> physio predictor var',
                         required=True,
                         type=str)
-    parser.add_argument('-l', '--nlags',
-                        help='Number of lags',
-                        default=15, 
+    parser.add_argument('-pl', '--p_nlags',
+                        help='Number of lags (TRs) of physio signal in the positive (forward) direction',
                         required=False,
-                        type=int)  
+                        default=15,
+                        type=int) 
+    parser.add_argument('-nl', '--n_nlags',
+                        help='Number of lags (TRs) of physio signal in the negative (backward) direction',
+                        required=False,
+                        default=0,
+                        type=int)   
     parser.add_argument('-vk', '--var_nknots',
                         help='Number of knots in spline basis for physio var. '
                         'Knots are placed at equally spaced quantiles based on N knots',
@@ -149,7 +150,7 @@ if __name__ == '__main__':
     parser.add_argument('-vl', '--lag_nknots',
                         help='Number of knots in spline basis for lag. '
                         'Knots are placed along equally spaced values across lag range',
-                        default=3, 
+                        default=4, 
                         required=False,
                         type=int)  
     parser.add_argument('-pe', '--physio_var_evaluate',
@@ -172,8 +173,8 @@ if __name__ == '__main__':
 
 
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['dataset'], args_dict['physio_var'], args_dict['nlags'], 
-             args_dict['var_nknots'], args_dict['lag_nknots'], 
+    run_main(args_dict['dataset'], args_dict['physio_var'], args_dict['p_nlags'], 
+             args_dict['n_nlags'], args_dict['var_nknots'], args_dict['lag_nknots'], 
              args_dict['physio_var_evaluate'], args_dict['lag_evaluate'],
              args_dict['save_func_pred'])
 
