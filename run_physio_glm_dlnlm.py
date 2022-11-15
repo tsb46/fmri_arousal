@@ -10,16 +10,12 @@ from utils.load_utils import load_subject_list
 from utils.load_write import load_data, write_nifti
 
 
-def construct_crossbasis(pvar, p_nlags, n_nlags, var_nknots, lag_nknots, q1=0.05, q2=0.95):
-    # Get array of equally spaced quantiles for physio var
-    var_quant = np.linspace(q1,q2,var_nknots)
-    varknots = pvar.quantile(var_quant).values
+def construct_crossbasis(pvar, p_nlags, n_nlags, var_df, lag_df):
     # Create lag sequence array (include lag of 0!)
     seq_lag = np.arange(-n_nlags, p_nlags+1)
     # Create Cubic B-spline basis for predictor and lag
-    basis_var = dmatrix("cr(x, knots=varknots) - 1", {"x": pvar}, return_type='dataframe')
-    basis_lag = dmatrix("cr(x, df=lag_nknots) - 1", 
-                        {"x": seq_lag}, return_type='dataframe')
+    basis_var = dmatrix("cr(x, df=var_df) - 1", {"x": pvar}, return_type='dataframe')
+    basis_lag = dmatrix("cr(x, df=lag_df) - 1", {"x": seq_lag}, return_type='dataframe')
     # Intialize crossbasis matrix
     crossbasis = np.zeros((len(pvar), basis_var.shape[1]*basis_lag.shape[1]))
     # Loop through predictor and lag bases and multiply column pairs
@@ -86,7 +82,7 @@ def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_ver
     write_nifti(beta_map, analysis_str, zero_mask, n_vert, params['mask'])
 
 
-def run_main(dataset, physio_var, p_nlags, n_nlags, var_nknots, lag_knots, 
+def run_main(dataset, physio_var, p_nlags, n_nlags, var_df, lag_df, 
              lag_eval, save_pred):
     func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', physio=[physio_var],
                                                                                 load_physio=True, verbose=True) 
@@ -95,7 +91,7 @@ def run_main(dataset, physio_var, p_nlags, n_nlags, var_nknots, lag_knots,
                               columns=physio_labels)
 
     # Construct Design matrix using patsy style formula
-    crossbasis, basis_var, basis_lag = construct_crossbasis(physio_sig[physio_var], p_nlags, n_nlags, var_nknots, lag_knots)
+    crossbasis, basis_var, basis_lag = construct_crossbasis(physio_sig[physio_var], p_nlags, n_nlags, var_df, lag_df)
     # Lag introduces null values - trim beginning of predictor matrix
     na_indx = ~(np.isnan(crossbasis).any(axis=1))
     func_data = func_data[na_indx, :]
@@ -139,16 +135,16 @@ if __name__ == '__main__':
                         required=False,
                         default=0,
                         type=int)   
-    parser.add_argument('-vk', '--var_nknots',
-                        help='Number of knots in spline basis for physio var. '
+    parser.add_argument('-vd', '--var_df',
+                        help='Number of degrees of freedom in spline basis for physio var. '
                         'Knots are placed at equally spaced quantiles based on N knots',
-                        default=5, 
+                        default=6, 
                         required=False,
                         type=int)  
-    parser.add_argument('-vl', '--lag_nknots',
-                        help='Number of knots in spline basis for lag. '
-                        'Knots are placed along equally spaced values across lag range',
-                        default=4, 
+    parser.add_argument('-ld', '--lag_df',
+                        help='Number of degrees of freedom in spline basis for lag. '
+                        'Knots are placed along equally spaced quantiles across lag range',
+                        default=5, 
                         required=False,
                         type=int)  
     parser.add_argument('-le', '--lag_evaluate',
@@ -166,6 +162,6 @@ if __name__ == '__main__':
 
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['physio_var'], args_dict['p_nlags'], 
-             args_dict['n_nlags'], args_dict['var_nknots'], args_dict['lag_nknots'], 
+             args_dict['n_nlags'], args_dict['var_df'], args_dict['lag_df'], 
              args_dict['lag_evaluate'], args_dict['save_func_pred'])
 
