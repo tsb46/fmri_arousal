@@ -32,11 +32,9 @@ def construct_crossbasis(pvar, p_nlags, n_nlags, var_nknots, lag_nknots, q1=0.05
     return crossbasis, basis_var, basis_lag
     
 
-def evaluate_model(pvar, lin_reg, basis_var, basis_lag, physio_eval, lag_eval, p_nlags, n_nlags,
-                   n_voxels, q1=0.5, q2=0.99):
-    # Get equally spaced percentiles of predictor var to evaluate (based on physio_eval) 
-    var_quant = np.linspace(q1,q2, physio_eval)
-    var_pred_array = pvar.quantile(var_quant).values
+def evaluate_model(pvar, lin_reg, basis_var, basis_lag, lag_eval, p_nlags, n_nlags, n_voxels):
+    # Select z-score units to evaluate physio variables
+    var_pred_array = [0.5, 0.75, 1, 1.5, 2, 2.5]
     # Create lag sequence array (include lag of 0!)
     seq_lag = np.linspace(-n_nlags, p_nlags, lag_eval)
     # Create repeated values of pred and lag array for all possible pairwise combos
@@ -89,7 +87,7 @@ def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_ver
 
 
 def run_main(dataset, physio_var, p_nlags, n_nlags, var_nknots, lag_knots, 
-             physio_eval, lag_eval, save_pred):
+             lag_eval, save_pred):
     func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', physio=[physio_var],
                                                                                 load_physio=True, verbose=True) 
     # Create dataframe of physio signals
@@ -109,11 +107,11 @@ def run_main(dataset, physio_var, p_nlags, n_nlags, var_nknots, lag_knots,
         save_pred(cross_basis[na_indx,:], lin_reg, dataset)
 
     pred_maps, lag_eval, eval_points = evaluate_model(physio_sig[physio_var], lin_reg, basis_var, basis_lag, 
-                                                      physio_eval, lag_eval, p_nlags, n_nlags, func_data.shape[1])
+                                                      lag_eval, p_nlags, n_nlags, func_data.shape[1])
     pred_maps = np.stack(pred_maps,axis=2)
 
     pickle.dump([lin_reg, lag_eval, eval_points], open(f'{dataset}_dlnm_group_results.pkl', 'wb'))
-    for i in range(physio_eval):
+    for i in range(pred_maps.shape[0]):
         write_results(dataset, f'eval_{i}', pred_maps[i,:,:], 'group', None, None, zero_mask, n_vert, params)
 
 
@@ -153,12 +151,6 @@ if __name__ == '__main__':
                         default=4, 
                         required=False,
                         type=int)  
-    parser.add_argument('-pe', '--physio_var_evaluate',
-                        help='for model predictions, what # of values of the physio '
-                        'variable to evaluate on the fitted model.',
-                        required=False,
-                        default=7,
-                        type=str)
     parser.add_argument('-le', '--lag_evaluate',
                         help='for model predictions, what # of equally spaced values between '
                         ' min and max lag to evaluate on the fitted model.',
@@ -175,6 +167,5 @@ if __name__ == '__main__':
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['physio_var'], args_dict['p_nlags'], 
              args_dict['n_nlags'], args_dict['var_nknots'], args_dict['lag_nknots'], 
-             args_dict['physio_var_evaluate'], args_dict['lag_evaluate'],
-             args_dict['save_func_pred'])
+             args_dict['lag_evaluate'], args_dict['save_func_pred'])
 
