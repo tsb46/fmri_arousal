@@ -54,6 +54,7 @@ def run_main(dataset, physio, p_n_lags, n_n_lags, nknots,
         # Construct Design matrix using patsy style formula
         print('construct spline matrix')
         design_mat, spline_basis = construct_lag_splines(physio_df, p_n_lags, n_n_lags, nknots)
+        
         # Lag introduces null values - trim beginning of predictor matrix
         na_indx = ~(np.isnan(design_mat).any(axis=1))
         func_data = func_data[na_indx, :]
@@ -84,20 +85,19 @@ def write_results(dataset, term, pred_maps, pred_lag_vec, cc_max, cc_min, zero_m
         write_nifti(pred_maps, analysis_str, zero_mask, n_vert, analysis_params['mask'])
 
 
-
 if __name__ == '__main__':
     """Run main analysis"""
     parser = argparse.ArgumentParser(description='Run Physio GLM w/ Time-lag Spline Regressors')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'nki', 'hcp', 'hcp_fix', 'yale',
-                                 'spreng'], 
+                        choices=['chang', 'nki', 'hcp', 'hcp', 'yale', 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-p', '--physio',
                         help='select physio - can only provide one',
                         required=True,
-                        choices=['hr', 'rv', 'alpha', 'delta', 'infraslow', 'ppg_low'],
+                        choices=['hr', 'rv', 'alpha', 'delta', 'infraslow', 
+                                 'ppg_low', 'vigilance', 'pupil'],
                         type=str)
     parser.add_argument('-pl', '--p_nlags',
                         help='Number of lags (TRs) of physio signal in the positive (forward) direction',
