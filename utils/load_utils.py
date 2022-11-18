@@ -3,22 +3,39 @@ import numpy as np
 import os
 import pandas as pd
 
-subject_list_chang = 'data/dataset_chang/subject_list_chang.csv'
-subject_list_chang_bh = 'data/dataset_chang_bh/subject_list_chang_bh.csv'
-subject_list_nki = 'data/dataset_nki/subject_list_nki.csv'
-subject_list_hcp = 'data/dataset_hcp/subject_list_hcp.csv'
-subject_list_monash = 'data/dataset_monash/subject_list_monash_subset.csv'
-subject_list_spreng = 'data/dataset_spreng/subject_list_spreng.csv'
-subject_list_yale = 'data/dataset_yale/subject_list_yale.csv'
+physio_dict = {
+    'rv': 'RESP_RVT_NK',
+    'hr': 'PPG_RATE_NK',
+    'ppg_low': 'PPG_LOW_NK',
+    'ppg_amp': 'RESP_AMP_NK',
+    'vigilance': 'vigilance_at',
+    'alpha': 'fbands_Alpha',
+    'delta': 'fbands_Delta',
+    'infraslow': 'Infraslow',
+    'global_sig': 'global_sig' 
+}
 
+physio_type = {
+    'func': 'func',
+    'rv': 'physio',
+    'hr': 'physio',
+    'ppg_low': 'physio',
+    'ppg_amp': 'physio',
+    'vigilance': 'eeg',
+    'alpha': 'eeg',
+    'delta': 'eeg',
+    'infraslow': 'eeg',
+    'global_sig': 'global_sig',
+    'pupil': 'physio'
+}
 
 def find_fps(data, level, physio, params, subj_n=None, scan=None):
-    subj_list = load_subject_list(data)
+    subj_list = load_subject_list(params['subject_list'])
     physio_fp = physio.copy()
     if level == 'group':
         if (data == 'chang') | (data == 'chang_bh') | (data == 'yale'):
             search_terms = subj_list[['subject', 'scan']].values.tolist()
-        elif (data == 'hcp') | (data == 'hcp_fix'):
+        elif (data == 'hcp'):
             search_terms = subj_list[['subject', 'lr']].values.tolist()
         else:
             search_terms = subj_list.subject.values.tolist()
@@ -28,7 +45,7 @@ def find_fps(data, level, physio, params, subj_n=None, scan=None):
             if (data == 'chang') | (data == 'chang_bh') | (data == 'yale'):
                 scan_chang = subj_list.loc[subj_list.subject == subj_n, 'scan'].values[0]
                 search_terms = [[subj_n, scan_chang]] 
-            elif (data == 'hcp') | (data == 'hcp_fix'):
+            elif (data == 'hcp'):
                 scan_hcp = subj_list.loc[subj_list.subject == subj_n, 'lr'].values[0]
                 search_terms = [[subj_n, scan_hcp]]
             else:
@@ -44,162 +61,100 @@ def find_fps(data, level, physio, params, subj_n=None, scan=None):
 
 
     if data == 'chang':
-        fps = {d_type: [fp_chang(d_type, subj_scan[0],subj_scan[1]) for subj_scan in search_terms] 
+        fps = {d_type: [fp_chang(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
     elif data == 'chang_bh':
-        fps = {d_type: [fp_chang_bh(d_type, subj_scan[0],subj_scan[1]) for subj_scan in search_terms] 
+        fps = {d_type: [fp_chang_bh(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
     elif data == 'nki':
-        fps = {d_type: [fp_nki(d_type, subj) for subj in search_terms] for d_type in physio_fp}
-    elif (data == 'hcp') | (data == 'hcp_fix'):
-        if data == 'hcp_fix':
-            fix = True
-        else:
-            fix = False
-        fps = {d_type: [fp_hcp(d_type, subj_scan[0],subj_scan[1], fix) for subj_scan in search_terms] 
+        fps = {d_type: [fp_nki(d_type, subj, params) for subj in search_terms] for d_type in physio_fp}
+    elif (data == 'hcp'):
+        fps = {d_type: [fp_hcp(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
     elif data == 'spreng':
-        fps = {d_type: [fp_spreng(d_type, subj) for subj in search_terms] for d_type in physio_fp}
+        fps = {d_type: [fp_spreng(d_type, subj, params) for subj in search_terms] for d_type in physio_fp}
     elif data == 'yale':
-        fps = {d_type: [fp_yale(d_type, subj_scan[0],subj_scan[1]) for subj_scan in search_terms] 
+        fps = {d_type: [fp_yale(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
     return fps
 
 
-def fp_chang(data_type, subj, scan):
+def fp_chang(data_type, subj, scan, params):
     if scan < 10:
         scan_str = f'000{scan}'
     else:
         scan_str = f'00{scan}'
 
-    if data_type == 'func':
-        f_str = f'data/dataset_chang/func/proc4_bandpass/sub_00{subj}-mr_{scan_str}-ecr_echo1_w_dspk_blur3mm.nii.gz' 
-    elif data_type == 'alpha':
-        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Alpha.txt'
-    elif data_type == 'delta':
-        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Delta.txt'
-    elif data_type == 'infraslow':
-        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Infraslow.txt'
-    elif data_type == 'hr':
-        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_PPG_RATE_NK.txt'
-    elif data_type == 'rv':
-        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_RESP_RVT_NK.txt'
-        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_RESP_AMP_HILBERT.txt'
-
-    elif data_type == 'csf':
-        f_str = f'data/dataset_chang/physio/raw_csf/sub_00{subj}_mr_{scan_str}.txt'
-    elif data_type == 'vigilance':
-        f_str = f'data/dataset_chang/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_vigilance.txt'
-    elif data_type == 'ppg_low':
-        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_PPG_LOW_NK.txt'
-    elif data_type == 'precuneus':
-        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_precuneus.txt'
-    elif data_type == 'superior_parietal':
-        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_superior_parietal.txt'
-    elif data_type == 'global_sig':
-        f_str = f'data/dataset_chang/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_global_sig.txt'
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/sub_00{subj}-mr_{scan_str}-ecr_echo1_w_dspk_blur3mm.nii.gz' 
+    elif physio_type[data_type] == 'eeg':
+        f_str = f'{params["eeg_dir"]}/sub_00{subj}_mr_{scan_str}_fbands_{physio_dict[data_type]}.txt'
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/sub_00{subj}_mr_{scan_str}_physio_{physio_dict[data_type]}.txt'
+    elif physio_type[data_type] == 'global_sig':
+        f_str = f'{params["physio_dir"]}/sub_00{subj}_mr_{scan_str}_{physio_dict[data_type]}.txt'
 
     return f_str
 
 
-def fp_chang_bh(data_type, subj, scan):
+def fp_chang_bh(data_type, subj, scan, params):
     if scan < 10:
         scan_str = f'000{scan}'
     else:
         scan_str = f'00{scan}'
 
-    if data_type == 'func':
-        f_str = f'data/dataset_chang_bh/func/proc4_bandpass/sub_00{subj}-mr_{scan_str}-adb_echo1_w_dspk_blur3mm.nii.gz' 
-    elif data_type == 'alpha':
-        f_str = f'data/dataset_chang_bh/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Alpha.txt'
-    elif data_type == 'delta':
-        f_str = f'data/dataset_chang_bh/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Delta.txt'
-    elif data_type == 'infraslow':
-        f_str = f'data/dataset_chang_bh/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_Infraslow.txt'
-    elif data_type == 'hr':
-        f_str = f'data/dataset_chang_bh/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_PPG_RATE_NK.txt'
-    elif data_type == 'rv':
-        f_str = f'data/dataset_chang_bh/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_RESP_RVT_NK.txt'
-    elif data_type == 'csf':
-        f_str = f'data/dataset_chang_bh/physio/raw_csf/sub_00{subj}_mr_{scan_str}.txt'
-    elif data_type == 'vigilance':
-        f_str = f'data/dataset_chang_bh/eeg/proc1_fbands/sub_00{subj}_mr_{scan_str}_fbands_vigilance_at.txt'
-    elif data_type == 'ppg_low':
-        f_str = f'data/dataset_chang_bh/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_physio_PPG_LOW_NK.txt'
-    elif data_type == 'global_sig':
-        f_str = f'data/dataset_chang_bh/physio/proc1_physio/sub_00{subj}_mr_{scan_str}_global_sig.txt'
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/sub_00{subj}-mr_{scan_str}-adb_echo1_w_dspk_blur3mm.nii.gz' 
+    elif physio_type[data_type] == 'eeg':
+        f_str = f'{params["eeg_dir"]}/sub_00{subj}_mr_{scan_str}_fbands_{physio_dict[data_type]}.txt'
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/sub_00{subj}_mr_{scan_str}_physio_{physio_dict[data_type]}.txt'
+    elif physio_type[data_type] == 'global_sig':
+        f_str = f'{params["physio_dir"]}/sub_00{subj}_mr_{scan_str}_{physio_dict[data_type]}.txt'
 
     return f_str
 
 
-def fp_hcp(data_type, subj, scan, fix):
-    if data_type == 'func':
-        if fix:
-            f_str = f'data/dataset_hcp/func_fix/proc4_bandpass/{subj}_{scan}1_rest.nii.gz'
-        else:
-            f_str = f'data/dataset_hcp/func/proc4_bandpass/{subj}_{scan}1_rest.nii.gz'
-    elif (data_type == 'rv') | (data_type == 'rv_amp'):
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_RVT_NK.txt'
-    elif data_type == 'rv_rate':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_RESP_RATE_NK.txt'
-    elif data_type == 'hr':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_PPG_HR_NK.txt'
-    elif data_type == 'ppg_low':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio_PPG_LOW_NK.txt'
-    elif data_type == 'precuneus':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_precuneus.txt'
-    elif data_type == 'superior_parietal':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_superior_parietal.txt'
-    elif data_type == 'global_sig':
-        f_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_global_sig.txt'
+def fp_hcp(data_type, subj, scan, params):
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/{subj}_{scan}1_rest.nii.gz' 
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/{subj}_physio_{physio_dict[data_type]}.txt'
+    elif physio_type[data_type] == 'global_sig':
+        f_str = f'{params["physio_dir"]}/{subj}_{physio_dict[data_type]}.txt'
+
     return f_str
 
 
-def fp_nki(data_type, subj):
-    if data_type == 'func':
-        f_str = f'data/dataset_nki/func/proc5_filter_norm/{subj}_task_breathhold.nii.gz'
-    elif data_type == 'hr':
-        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_PPG_HR_NK.txt'
-    elif data_type == 'rv':
-        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_RESP_RVT_NK.txt'
-    elif data_type == 'csf':
-        f_str = f'data/dataset_nki/physio/proc1_physio/{subj}_task_breathhold_physio_csf.txt'
+def fp_nki(data_type, subj, params):
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/{subj}_task_breathhold.nii.gz' 
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/{subj}_task_breathhold_physio_{physio_dict[data_type]}.txt'
+
     return f_str
 
 
-def fp_spreng(data_type, subj):
-    if data_type == 'func':
-        f_str = f'data/dataset_spreng/func/proc8_bandpass/{subj}_ses-1_task-rest.nii.gz'
-    elif data_type == 'hr':
-        f_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio_PPG_HR_NK.txt'
-    elif data_type == 'rv':
-        f_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio_RESP_RVT_NK.txt'
-    elif data_type == 'ppg_low':
-        f_str = f'data/dataset_spreng/physio/proc1_physio/{subj}_ses-1_task-rest_physio_PPG_LOW_NK.txt'
+def fp_spreng(data_type, subj, params):
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/{subj}_ses-1_task-rest.nii.gz' 
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/{subj}_ses-1_task-rest_physio_{physio_dict[data_type]}.txt'
+
     return f_str
 
 
-def fp_yale(data_type, subj, scan):
-    if data_type == 'func':
-        f_str = f'data/dataset_yale/func/proc5_bandpass/{subj}_task-rest_run-0{scan}_bold.nii.gz' 
-    elif data_type == 'pupil':
-        f_str = f'data/dataset_yale/physio/raw/{subj}_task-rest_run-0{scan}_et.txt'
+def fp_yale(data_type, subj, scan, params):
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/{subj}_task-rest_run-0{scan}_bold.nii.gz' 
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/{subj}_task-rest_run-0{scan}_et.txt'
+
     return f_str
 
 
-def load_subject_list(data):
-    if data == 'chang':
-        subj_list = pd.read_csv(subject_list_chang)
-    elif data == 'chang_bh':
-        subj_list = pd.read_csv(subject_list_chang_bh)
-    elif data == 'nki':
-        subj_list = pd.read_csv(subject_list_nki)
-    elif (data == 'hcp') | (data == 'hcp_fix'):
-        subj_list = pd.read_csv(subject_list_hcp)
-    elif data == 'spreng':
-        subj_list = pd.read_csv(subject_list_spreng)
-    elif data == 'yale':
-        subj_list = pd.read_csv(subject_list_yale)
+def load_subject_list(subject_list):
+    subj_list = pd.read_csv(subject_list)
     return subj_list
 
 

@@ -1,10 +1,13 @@
 
 { "chang": {
+		"subject_list": "data/dataset_chang/subject_list_chang.csv",
 		"tr": 2.1,
-		"physio": ["vigilance", "hr", "rv", "csf", "alpha", "delta", "infraslow", "ppg_low", 
-			"precuneus", "superior_parietal", "global_sig"],
+		"physio": ["vigilance", "hr", "rv", "alpha", "delta", "infraslow", "ppg_low", "global_sig"],
 		"nscans": 15,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_chang/func/proc4_bandpass",
+		"eeg_dir": "data/dataset_chang/eeg/proc1_fbands",
+		"physio_dir": "data/dataset_chang/physio/proc1_physio",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -52,11 +55,15 @@
 		}
 	},
 	"chang_bh": {
+		"subject_list": "data/dataset_chang_bh/subject_list_chang_bh.csv",
 		"tr": 2.1,
 		"physio": ["vigilance", "hr", "rv", "csf", "alpha", "delta", "infraslow", "ppg_low", 
 			"global_sig"],
 		"nscans": 8,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_chang_bh/func/proc4_bandpass",
+		"eeg_dir": "data/dataset_chang_bh/eeg/proc1_fbands",
+		"physio_dir": "data/dataset_chang_bh/physio/proc1_physio",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -102,10 +109,13 @@
 		}
 	},
 	"nki": {
+		"subject_list": "data/dataset_nki/subject_list_nki.csv",
 		"tr": 1.4,
-		"physio": ["rv", "hr", "csf"],
+		"physio": ["rv", "hr", "ppg_low"],
 		"nscans": 50,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_nki/func/proc5_filter_norm",
+		"physio_dir": "data/dataset_nki/physio/proc1_physio",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -129,6 +139,7 @@
 						"hr": "bandpass",
 						"rv": "bandpass",
 						"csf": "bandpass",
+						"ppg_low": "raw",
 						"global_sig": "highpass"
 					},
 					"bandpass" : {
@@ -146,10 +157,13 @@
 		}
 	},
 	"hcp": {
+		"subject_list": "data/dataset_hcp/subject_list_hcp.csv",
 		"tr": 0.72,
-		"physio": ["rv", "rv_amp", "rv_rate", "hr", "ppg_low", "precuneus", "superior_parietal", "global_sig"],
-		"nscans": 15,
+		"physio": ["rv", "rv_amp", "rv_rate", "hr", "ppg_low", "global_sig"],
+		"nscans": 30,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_hcp/func_fix/proc4_bandpass",
+		"physio_dir": "data/dataset_hcp/physio/proc1_physio",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -193,63 +207,14 @@
 			}
 		}
 	},
-	"monash": {
-		"tr": 2.45,
-		"physio": [],
-		"nscans": 26,
-		"mask": "masks/MNI152_T1_3mm_brain_mask.nii.gz",
-		"data": { 
-			"func": {
-				"filter_params": {
-					"filter_choice": "bandpass",
-					"bandpass" : {
-						"low": 0.01,
-						"high": 0.1	
-					},
-					"lowpass": {
-						"high": 0.031
-					},
-					"highpass": {
-						"low": 0.01
-					}
-				}
-			},
-			"physio": {
-
-			}
-		}
-	},
-	"monash_pet": {
-		"tr": 16,
-		"physio": [],
-		"nscans": 26,
-		"mask": "masks/MNI152_T1_3mm_brain_mask.nii.gz",
-		"data": { 
-			"func": {
-				"filter_params": {
-					"filter_choice": "raw",
-					"bandpass" : {
-						"low": 0.01,
-						"high": 0.1	
-					},
-					"lowpass": {
-						"high": 0.1
-					},
-					"highpass": {
-						"low": 0.009
-					}
-				}
-			},
-			"physio": {
-
-			}
-		}
-	},
 	"spreng": {
+		"subject_list": "data/dataset_spreng/subject_list_spreng.csv", 
 		"tr": 3,
 		"physio": ["hr", "rv", "ppg_low"],
 		"nscans": 50,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_spreng/func/proc8_bandpass",
+		"physio_dir": "data/dataset_spreng/physio/proc1_physio",
 		"data": { 
 			"func": {
 				"filter_params": {
@@ -291,10 +256,13 @@
 		}
 	},
 	"yale": {
+		"subject_list": "data/dataset_yale/subject_list_yale.csv",
 		"tr": 1,
 		"physio": ["pupil"],
 		"nscans": 54,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_yale/func/proc5_bandpass",
+		"physio_dir": "data/dataset_yale/physio/raw",
 		"data": { 
 			"func": {
 				"filter_params": {
