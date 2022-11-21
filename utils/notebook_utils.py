@@ -43,9 +43,9 @@ def evaluate_model(lag_vec, model, spline_basis, var_eval):
     return pred_lags
 
 
-def lag_basis(var, lag_vec, lag_nknots):
+def lag_basis(var, lag_vec, lag_df):
     # Create Cubic B-spline basis for predictor and lag
-    lag_splines = dmatrix("cr(x, df=lag_nknots) - 1", 
+    lag_splines = dmatrix("cr(x, df=lag_df) - 1", 
                           {"x": lag_vec}, return_type='dataframe')
     # Intialize basis matrix
     basis_lag = np.zeros((len(var), lag_splines.shape[1]))

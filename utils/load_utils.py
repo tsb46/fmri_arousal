@@ -6,6 +6,8 @@ import pandas as pd
 physio_dict = {
     'rv': 'RESP_RVT_NK',
     'hr': 'PPG_RATE_NK',
+    'rv_amp': 'RESP_RVT_NK',
+    'rv_rate': 'RESP_RATE_NK',
     'ppg_low': 'PPG_LOW_NK',
     'ppg_amp': 'RESP_AMP_NK',
     'vigilance': 'vigilance_at',
@@ -18,6 +20,8 @@ physio_dict = {
 physio_type = {
     'func': 'func',
     'rv': 'physio',
+    'rv_amp': 'physio',
+    'rv_rate': 'physio',
     'hr': 'physio',
     'ppg_low': 'physio',
     'ppg_amp': 'physio',
