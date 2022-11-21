@@ -97,7 +97,7 @@ if __name__ == '__main__':
                         help='select physio - can only provide one',
                         required=True,
                         choices=['hr', 'rv', 'alpha', 'delta', 'infraslow', 
-                                 'ppg_low', 'vigilance', 'pupil'],
+                                 'ppg_low', 'vigilance', 'pupil', 'resp'],
                         type=str)
     parser.add_argument('-pl', '--p_nlags',
                         help='Number of lags (TRs) of physio signal in the positive (forward) direction',

@@ -159,7 +159,7 @@
 	"hcp": {
 		"subject_list": "data/dataset_hcp/subject_list_hcp.csv",
 		"tr": 0.72,
-		"physio": ["rv", "rv_amp", "rv_rate", "hr", "ppg_low", "global_sig"],
+		"physio": ["rv", "rv_amp", "rv_rate", "hr", "ppg_low", "global_sig", "resp"],
 		"nscans": 30,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func_dir": "data/dataset_hcp/func_fix/proc4_bandpass",
@@ -188,6 +188,7 @@
 						"rv": "bandpass",
 						"rv_amp": "bandpass",
 						"rv_rate": "bandpass",
+						"resp": "raw",
 						"ppg_low": "raw",
 						"precuneus": "raw",
 						"superior_parietal": "raw",
