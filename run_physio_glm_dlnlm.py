@@ -118,7 +118,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
                         choices=['chang', 'chang_bh', 'nki', 'yale',
-                                  'hcp', 'hcp_fix', 'spreng'], 
+                                  'hcp', 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-p', '--physio_var',

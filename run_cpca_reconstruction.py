@@ -65,7 +65,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Reconstruct cPCA Components from group cPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'hcp_fix', 'spreng'], 
+                        choices=['chang', 'chang_bh', 'nki', 'yale', 'hcp', 'spreng'], 
                         required=True,
                         type=str)
     parser.add_argument('-i', '--input_cpca',

@@ -106,7 +106,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
                         choices=['chang', 'chang_bh', 'nki', 'hcp', 
-                                 'hcp_fix', 'spreng', 'yale'], 
+                                 'spreng', 'yale'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',
