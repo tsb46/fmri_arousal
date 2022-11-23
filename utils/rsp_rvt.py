@@ -20,7 +20,7 @@ def rsp_rvt(
     boundaries=[2.0, 1 / 30],
     iterations=10,
     show=False,
-    silent=False,
+    silent=True,
 ):
     """**Respiratory Volume per Time (RVT)**
 
@@ -139,7 +139,7 @@ def rsp_rvt(
     # Downsampling is not needed as we assume always the same sampling rate and operate always in the same sampling rate
     if show:
         _rsp_rvt_plot(rvt, rsp_signal, sampling_rate)
-    return rvt
+    return rvt, fr_rv, fr_if
 
 
 def _rsp_rvt_find_min(increase_inds, fr_phase, smaller_index, silent):

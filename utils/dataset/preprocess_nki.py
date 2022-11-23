@@ -43,11 +43,12 @@ def process_physio(physio_signals):
                    ppg_signals_nk['PPG_PEAK_AMP'].values.tolist(),resp_signals_nk['RSP_Rate'].values.tolist(), 
                    resp_signals_nk['RSP_Amplitude'].values.tolist(),resp_signals_nk['RSP_RVT'].values.tolist(), 
                    resp_signals_nk['RSP_AMP_HILBERT'].values.tolist(), resp_signals_window,
-                   gsr_signals_nk['GSR']]
+                   gsr_signals_nk['GSR'], resp_signals_nk['RSP_RVT_IF'].values.tolist(),
+                   resp_signals_nk['RSP_RVT_AMP'].values.tolist()]
 
     physio_labels = ['PPG_HR_NK', 'PPG_HR_W', 'PPG_LOW_NK', 'PPG_RMS_AMP', 'PPG_PEAK_AMP', 
                      'RESP_RATE_NK', 'RESP_AMP_NK', 'RESP_RVT_NK', 'RESP_AMP_HILBERT', 'RESP_VAR_W', 
-                     'GSR']
+                     'GSR', 'RESP_RVT_IF_NK', 'RESP_RVT_AMP_NK']
     physio_df = pd.DataFrame({label: col for label, col in zip(physio_labels, physio_list)})
 
     # Forward fill ppg (window) signal 

@@ -164,9 +164,11 @@ def process_physio(physio_dict, sf_resamp, func_len):
                    resp_signals_nk['RSP_AMP_HILBERT'].values.tolist(), resp_signals_nk['RSP_RV'],
                    resp_signals_window, ppg_signals_nk['PPG_Rate'].values.tolist(), ppg_signals_window,
                    ppg_signals_nk['PPG_LOW'].values.tolist(), ppg_signals_nk['PPG_RMS_AMP'].values.tolist(),
-                   ppg_signals_nk['PPG_PEAK_AMP'].values.tolist()] 
+                   ppg_signals_nk['PPG_PEAK_AMP'].values.tolist(), resp_signals_nk['RSP_RVT_IF'].values.tolist(),
+                   resp_signals_nk['RSP_RVT_AMP'].values.tolist()] 
     physio_labels = ['ECG_HR_NK', 'RESP_RATE_NK', 'RESP_AMP_NK', 'RESP_RVT_NK', 'RESP_AMP_HILBERT', 'RSP_RV', 
-                     'RESP_VAR_W', 'PPG_HR_NK', 'PPG_RATE_W', 'PPG_LOW_NK', 'PPG_RMS_AMP', 'PPG_PEAK_AMP']
+                     'RESP_VAR_W', 'PPG_HR_NK', 'PPG_RATE_W', 'PPG_LOW_NK', 'PPG_RMS_AMP', 'PPG_PEAK_AMP', 
+                     'RESP_RVT_IF_NK', 'RESP_RVT_AMP_NK']
     physio_df = pd.DataFrame({label: col for label, col in zip(physio_labels, physio_list)})
 
     return physio_df
