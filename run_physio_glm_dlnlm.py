@@ -152,7 +152,7 @@ if __name__ == '__main__':
                         ' min and max lag to evaluate on the fitted model.',
                         required=False,
                         default=40,
-                        type=str)
+                        type=int)
     parser.add_argument('-s', '--save_func_pred',
                         help='whether to save the predicted functional BOLD data (will be very large)',
                         required=False,
