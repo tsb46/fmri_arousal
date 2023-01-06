@@ -3,7 +3,7 @@
 		"subject_list": "data/dataset_chang/subject_list_chang.csv",
 		"tr": 2.1,
 		"physio": ["vigilance", "hr", "rv", "alpha", "delta", "infraslow", "ppg_low", "global_sig"],
-		"nscans": 15,
+		"nscans": 14,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func_dir": "data/dataset_chang/func/proc4_bandpass",
 		"eeg_dir": "data/dataset_chang/eeg/proc1_fbands",
