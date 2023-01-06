@@ -31,20 +31,15 @@ def event_average(func_event_blocks):
     return func_event_blocks.mean(axis=0)
 
 
-def write_results(dataset, func_avg, level, subj_n, scan, zero_mask, n_vert, params):
-    if level == 'subject':
-        analysis_str = f'{dataset}_taskbh_{subj_n}_{scan}'
-    else:
-        analysis_str = f'{dataset}_taskbh_group'
-        pickle.dump(func_avg, open(f'{analysis_str}_results.pkl', 'wb'))
-
+def write_results(dataset, func_avg, zero_mask, n_vert, params):
+    analysis_str = f'{dataset}_taskbh_group'
+    pickle.dump(func_avg, open(f'{analysis_str}_results.pkl', 'wb'))
     write_nifti(func_avg, analysis_str, zero_mask, n_vert, params['mask'])
 
 
-
-def run_main(dataset, level, compliance_fp):
+def run_main(dataset, compliance_fp):
     # Load data
-    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, level, physio=None, load_physio=False, 
+    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, physio=None, load_physio=False, 
                                                            group_method='list') 
     # load Chang BH event file (assuming timing is the same across subjects
     bh_events = load_chang_bh_event_file()
@@ -72,16 +67,11 @@ def run_main(dataset, level, compliance_fp):
         else:
             compliance_subj = None
         func_blocks = event_index(func, bh_event_blocks, compliance_subj)
-        if level == 'subject':
-            func_avg = event_average(func_blocks)
-            write_results(dataset, func_avg, level, subj_n, scan_n, zero_mask, n_vert, params)
-        else:
-            func_block_all.append(func_blocks)
+        func_block_all.append(func_blocks)
 
-    if level == 'group':
-        func_block_all_array = np.vstack(func_block_all)
-        func_all_avg = func_block_all_array.mean(axis=0)
-        write_results(dataset, func_all_avg, level, None, None, zero_mask, n_vert, params)
+    func_block_all_array = np.vstack(func_block_all)
+    func_all_avg = func_block_all_array.mean(axis=0)
+    write_results(dataset, func_all_avg, zero_mask, n_vert, params)
 
 
 
@@ -94,11 +84,6 @@ if __name__ == '__main__':
                         default='chang_bh',
                         required=False,
                         type=str)
-    parser.add_argument('-l', '--level',
-                        help='subject or group level analysis',
-                        default='group',
-                        choices=['subject', 'group'],
-                        type=str)
     parser.add_argument('-c', '--compliance_fp',
                         help='filepath to csv file containing trial level compliance of deep breaths to auditory cue',
                         default='data/dataset_chang_bh/compliance.csv',
@@ -106,5 +91,5 @@ if __name__ == '__main__':
 
 
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['dataset'], args_dict['level'], args_dict['compliance_fp'])
+    run_main(args_dict['dataset'], args_dict['compliance_fp'])
 

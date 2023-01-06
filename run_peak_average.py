@@ -50,7 +50,7 @@ def write_results(dataset, peak_avg, pos_neg, physio_select,
 def run_main(dataset, physio, pos_neg, l_window, r_window, 
              min_peak_thres, max_peak_thres, peak_distance, n_samples=100):
 	# Load data
-	func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', 
+	func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 
 	                                                                            physio=[physio], 
 	                                                                            load_physio=True) 
 	# Normalize func data

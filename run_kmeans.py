@@ -20,7 +20,7 @@ def write_results(dataset, cluster_centers, cluster_labels, zero_mask, n_vert, p
 
 
 def run_main(dataset, n_clusters, center, regress_global_sig):
-    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, 'group', physio=None, load_physio=False, 
+    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, physio=None, load_physio=False, 
                                                            regress_global=regress_global_sig) 
     func_data = zscore(func_data)
     # If specified, center along rows

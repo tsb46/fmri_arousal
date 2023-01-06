@@ -72,8 +72,7 @@ def load_chang_bh_event_file():
     return events
 
 
-def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None, 
-              group_method='stack', physio_group_method='stack', 
+def load_data(data, physio, load_physio, group_method='stack', physio_group_method='stack', 
               verbose=True, filter_nan_voxels=True, regress_global=False):
     params = load_params()
 
@@ -92,43 +91,24 @@ def load_data(data, level, physio, load_physio, subj_n=None, scan_n=None,
 
 
     # Pull file paths
-    fps = find_fps(data, level, physio, params_data, subj_n, scan_n)
+    fps = find_fps(data, physio, params_data)
     # Print filter parameters for functional and physio signals
     if verbose:
         print_filter_info(params_data, load_physio, physio)
 
-    # Pull data for subject level analysis
-    if level == 'subject':
-        if verbose:
-            print(f'Loading subject: {subj_n}')
-        func_data = load_subject_func(fps['func'][0], mask, params_data, regress_global)
-        # If load subject and group method = list, place in list for downstream compatibility
-        if group_method == 'list':
-            func_data = [func_data]
-        # If load physio option is specified, load and preprocess physio
-        if load_physio:
-            physio_proc = []
-            for p in physio:
-                p_proc = load_subject_physio(fps[p][0], params_data, data, p)
-                if physio_group_method == 'list':
-                    p_proc = [p_proc]
-                physio_proc.append(p_proc)
-        else:
-            physio_proc = None
     # Pull data for group level analysis
-    elif level == 'group':
-        if verbose:
-            print('Loading all subjects')
-            if regress_global:
-                print('regressing out global signal')
-        func_data = load_group_func(fps['func'], mask, params_data, group_method, regress_global, verbose)
-        if load_physio:
-            physio_proc = []
-            for p in physio:
-                p_proc = load_group_physio(fps[p], params_data, data, p, physio_group_method)
-                physio_proc.append(p_proc)
-        else:
-            physio_proc = None
+    if verbose:
+        print('Loading all subjects')
+        if regress_global:
+            print('regressing out global signal')
+    func_data = load_group_func(fps['func'], mask, params_data, group_method, regress_global, verbose)
+    if load_physio:
+        physio_proc = []
+        for p in physio:
+            p_proc = load_group_physio(fps[p], params_data, data, p, physio_group_method)
+            physio_proc.append(p_proc)
+    else:
+        physio_proc = None
 
     # Filter voxels with no recorded BOLD signal (i.e. time series of all 0s)
     if filter_nan_voxels:

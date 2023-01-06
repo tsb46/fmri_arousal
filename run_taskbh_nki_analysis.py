@@ -45,27 +45,16 @@ def group_task_blocks(event_df):
     return event_df
 
 
-def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_vert, params):
-    if level == 'group':
-        analysis_str = f'{dataset}_taskbh_group_{term}'
-    elif level == 'subject':
-        analysis_str = f'{dataset}_taskbh_s{subj_n}'
-        if scan is not None:
-            analysis_str += f'_{scan}_{term}'
-
+def write_results(dataset, term, beta_map, zero_mask, n_vert, params):
+    analysis_str = f'{dataset}_taskbh_group_{term}'
     write_nifti(beta_map, analysis_str, zero_mask, n_vert, params['mask'])
 
 
 def run_main(dataset, model_formula, time_lag, interaction_map, 
-             level, subj_n, scan_n, convolve, scan_average):
+             convolve, scan_average):
     # Load data
-    func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, level, physio=None, load_physio=True, 
-                                                                                subj_n=subj_n, scan_n=scan_n, group_method='list') 
-    if level == 'subject':
-        func_data = [func_data]
-        for i, p in enumerate(physio_sig):
-            physio_sig[i] = [p]
-
+    func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, physio=None, load_physio=True, 
+                                                                                group_method='list') 
                 
     # Create lagged physio variables (if non-zero lag)
     physio_sig_proc = lag_and_convolve_physio(physio_sig, physio_labels, 
@@ -77,7 +66,7 @@ def run_main(dataset, model_formula, time_lag, interaction_map,
     # compute across subject task average
     if scan_average:
         scan_avg = average_scans(func_data)
-        write_results(dataset, 'scan_avg', scan_avg, level, subj_n, scan_n, zero_mask, n_vert, params)
+        write_results(dataset, 'scan_avg', scan_avg, zero_mask, n_vert, params)
 
     # load NKI event file (assuming timing is the same across subjects, see note above)
     df_events = load_nki_event_file()
@@ -101,7 +90,7 @@ def run_main(dataset, model_formula, time_lag, interaction_map,
 
     for i, term in enumerate(design_mat.columns):
         avg_beta = np.mean([bmap[i] for bmap in subj_beta_maps], axis=0) 
-        write_results(dataset, term, avg_beta[np.newaxis, :], level, subj_n, scan_n, zero_mask, n_vert, params)
+        write_results(dataset, term, avg_beta[np.newaxis, :], zero_mask, n_vert, params)
 
 
 if __name__ == '__main__':
@@ -123,19 +112,6 @@ if __name__ == '__main__':
                         help='choice of lag (positive - shift to the right, negative - shift to the left) for physio time series',
                         default=0,
                         type=int)
-    parser.add_argument('-l', '--level',
-                        help='subject or group level analysis',
-                        default='group',
-                        choices=['subject', 'group'],
-                        type=str)
-    parser.add_argument('-s', '--subject_n',
-                        help='subject number for subject level analysis',
-                        default=None,
-                        type=int)
-    parser.add_argument('-scan', '--scan_n',
-                        help='scan number for subject level analysis (if multiple runs from same subject',
-                        default=None,
-                        type=int)
     parser.add_argument('-c', '--convolve',
                         help='whether to convolve physio time series with canonical '
                         'hemodynamic response function',
@@ -151,6 +127,5 @@ if __name__ == '__main__':
 
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['model_formula'], args_dict['time_lag'],
-             args_dict['level'], args_dict['subject_n'], args_dict['scan_n'],
              args_dict['convolve'], args_dict['scan_average'])
 

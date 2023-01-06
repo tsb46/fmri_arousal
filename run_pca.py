@@ -48,19 +48,13 @@ def rotation(pca_output, data, rotation):
     return pca_output
 
 
-def write_results(dataset, level, pca_output, pca_type, comp_weights, 
-                  subj_n, scan, zero_mask, n_vert, rotate, params):
-    if level == 'group':
-        analysis_str = f'{dataset}_pca_group'
-    elif level == 'subject':
-        analysis_str = f'{dataset}_pca_s{subj_n}'
+def write_results(dataset, pca_output, pca_type, comp_weights, 
+                  zero_mask, n_vert, rotate, params):
+    analysis_str = f'{dataset}_pca_group'
 
     if rotate:
         analysis_str += f'_{rotate}'
 
-    if scan is not None:
-        analysis_str += f'_{scan}'
-        
     # Write nifti
     if pca_type == 'complex': 
         analysis_str = analysis_str + '_c'
@@ -77,9 +71,8 @@ def write_results(dataset, level, pca_output, pca_type, comp_weights,
     pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
 
 
-def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate, regress_global_sig):
-    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, level, physio=None, load_physio=False, 
-                                                           subj_n=subj_n, scan_n=scan_n, 
+def run_main(dataset, n_comps, pca_type, center, rotate, regress_global_sig):
+    func_data, _, _, zero_mask, n_vert, params = load_data(dataset, physio=None, load_physio=False, 
                                                            regress_global=regress_global_sig) 
     # If specified, center along rows
     if center == 'r':
@@ -95,9 +88,9 @@ def run_main(dataset, n_comps, level, subj_n, scan_n, pca_type, center, rotate, 
     if rotate is not None:
         pca_output = rotation(pca_output, func_data, rotate)
 
-    write_results(dataset, level, pca_output, pca_type, 
-                  pca_output['loadings'], subj_n, scan_n,
-                  zero_mask, n_vert, rotate, params)
+    write_results(dataset, pca_output, pca_type, 
+                  pca_output['loadings'], zero_mask, n_vert, 
+                  rotate, params)
 
 
 if __name__ == '__main__':
@@ -112,19 +105,6 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--n_comps',
                         help='<Required> Number of components from PCA',
                         required=True,
-                        type=int)
-    parser.add_argument('-l', '--level',
-                        help='subject or group level analysis',
-                        default='group',
-                        choices=['subject', 'group'],
-                        type=str)
-    parser.add_argument('-s', '--subject_n',
-                        help='subject number for subject level analysis (if level=subject)',
-                        default=None,
-                        type=int)
-    parser.add_argument('-x', '--scan_n',
-                        help='scan number for subject level analysis (if multiple runs from same subject)',
-                        default=None,
                         type=int)
     parser.add_argument('-t', '--pca_type',
                         help='Calculate complex or real PCA',
@@ -149,7 +129,5 @@ if __name__ == '__main__':
                         type=int)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['dataset'], args_dict['n_comps'], 
-             args_dict['level'], args_dict['subject_n'], 
-             args_dict['scan_n'], args_dict['pca_type'], 
-             args_dict['center'], args_dict['rotate'], 
-             args_dict['regress_global_sig'])
+             args_dict['pca_type'], args_dict['center'], 
+             args_dict['rotate'], args_dict['regress_global_sig'])

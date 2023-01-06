@@ -35,29 +35,15 @@ physio_type = {
     'pupil': 'physio'
 }
 
-def find_fps(data, level, physio, params, subj_n=None, scan=None):
+def find_fps(data, physio, params, subj_n=None, scan=None):
     subj_list = load_subject_list(params['subject_list'])
     physio_fp = physio.copy()
-    if level == 'group':
-        if (data == 'chang') | (data == 'chang_bh') | (data == 'yale'):
-            search_terms = subj_list[['subject', 'scan']].values.tolist()
-        elif (data == 'hcp'):
-            search_terms = subj_list[['subject', 'lr']].values.tolist()
-        else:
-            search_terms = subj_list.subject.values.tolist()
+    if (data == 'chang') | (data == 'chang_bh') | (data == 'yale'):
+        search_terms = subj_list[['subject', 'scan']].values.tolist()
+    elif (data == 'hcp'):
+        search_terms = subj_list[['subject', 'lr']].values.tolist()
     else:
-        search_subj(data, subj_list, subj_n, scan)
-        if scan is None:
-            if (data == 'chang') | (data == 'chang_bh') | (data == 'yale'):
-                scan_chang = subj_list.loc[subj_list.subject == subj_n, 'scan'].values[0]
-                search_terms = [[subj_n, scan_chang]] 
-            elif (data == 'hcp'):
-                scan_hcp = subj_list.loc[subj_list.subject == subj_n, 'lr'].values[0]
-                search_terms = [[subj_n, scan_hcp]]
-            else:
-                search_terms = [subj_n]
-        else:
-            search_terms = [[subj_n, scan]]
+        search_terms = subj_list.subject.values.tolist()
 
     if len(physio) > 0:
         search_physio(data, physio_fp, params['physio'])
@@ -207,21 +193,6 @@ def search_physio(data, physio, physio_standard):
                         top of utils/load_utils.py for acceptable physio labels for each dataset.
                         """.format(data)
                         )
-
-
-def search_subj(data, subj_list, subj, scan=None):
-    if scan is None:
-        found = subj in subj_list.subject.values
-        if (subj_list.values==subj).sum() > 1:
-            raise Exception(f'multiples files found in dataset "{data}" associated with input subject label '
-                            '{subj} - please provide scan number')
-    else:
-        found = (subj in subj_list.subject.values) & (scan in subj_list.scan.values)
-    # Ensure there is only one file associated with the supplied subject number (and scan number - if supplied)
-    if not found:
-        raise Exception(f'No file found in dataset "{data}" associated with input subject label {subj} and/or scan number')
-
-
 
     
     
