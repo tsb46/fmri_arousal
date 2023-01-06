@@ -84,8 +84,8 @@ def write_results(dataset, term, beta_map, level, subj_n, scan, zero_mask, n_ver
 
 def run_main(dataset, physio_var, p_nlags, n_nlags, var_df, lag_df, 
              lag_eval, save_pred):
-    func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, 'group', physio=[physio_var],
-                                                                                load_physio=True, verbose=True) 
+    func_data, physio_sig, physio_labels, zero_mask, n_vert, params = load_data(dataset, physio=[physio_var],
+                                                                                load_physio=True) 
     # Create dataframe of physio signals
     physio_sig = pd.DataFrame(np.squeeze(np.stack(physio_sig,axis=1)), 
                               columns=physio_labels)
