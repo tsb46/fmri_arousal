@@ -1,9 +1,13 @@
-import statsmodels.api as sm
+import json
+import neurokit2 as nk
 import numpy as np
 import pandas as pd
 import pickle
+import statsmodels.api as sm
+
 
 from patsy import dmatrix
+from scipy.io import loadmat
 from scipy.stats import zscore
 from sklearn.model_selection import TimeSeriesSplit
 from utils.glm_utils import onsets_to_block
@@ -19,14 +23,14 @@ fs_yale = 1.0
 
 
 def commonality_analysis(pc_norm, full_pred, pred_label, pred_label_col_indx):
-    sm_fit = sm.OLS(pc_norm, full_pred, hasconst=False).fit()
+    sm_fit = sm.OLS(pc_norm, full_pred, hasconst=True).fit()
     full_r2 = sm_fit.rsquared
     common_r2 = full_r2.copy()
     unique_r2 = {}
     for i, label in enumerate(pred_label):
         partial_pred_i = [col_n for col_n, label_i in enumerate(pred_label_col_indx) if label_i != i]
         partial_pred = full_pred[:, partial_pred_i]
-        sm_fit_partial = sm.OLS(pc_norm, partial_pred).fit()
+        sm_fit_partial = sm.OLS(pc_norm, partial_pred, hasconst=True).fit()
         unique_r2[label] = full_r2 - sm_fit_partial.rsquared
         common_r2 -= unique_r2[label]
     return full_r2, common_r2, unique_r2
@@ -115,7 +119,51 @@ def load_pca_results(subject_df, pca_fp, pca_p_fp, n_len, pca_c_fp=None, scan_in
 
         n_t += subj_len
     return pc_subj, pc_p_subj, pc_c_subj
-        
+
+
+def load_raw_physio(subj, dataset, fs=None, fs_resamp=None, scan=None):
+    if dataset == 'chang':
+        if scan < 10:
+            scan_str = f'000{scan}'
+        else:
+            scan_str = f'00{scan}'
+        p_fp = f'data/dataset_chang/physio/raw/sub_00{subj}-mr_{scan_str}-ecr_echo1_physOUT.mat'
+        physio_raw = loadmat(p_fp, squeeze_me=True)
+        fs = 1/physio_raw['OUT_p']['dt_phys'].item()
+        physio = {
+          'ppg': physio_raw['OUT_p']['card_dat'].item(), 
+          'resp': physio_raw['OUT_p']['resp'].item()['wave'].item()
+        }
+        trim_n = int(fs*14.7)
+        physio = {l: physio[l][trim_n:] for l in physio.keys()}
+
+    elif dataset == 'hcp':
+        if fs is None:
+            raise Exception('Sampling frequency - fs - must be supplied for HCP data')
+        p_fp = f'data/dataset_hcp/physio/raw/{subj}_{scan}1_physio.txt'
+        physio_signals = np.loadtxt(p_fp)
+        physio = { 
+          'resp': physio_signals[:,1],
+          'ppg': physio_signals[:,2]
+        }
+
+    elif dataset == 'spreng':
+        p_fp = f'data/dataset_spreng/physio/raw/{subj}_ses-1_task-rest_physio.tsv.gz'
+        physio_df = pd.read_csv(p_fp, compression='gzip', sep='\t', header=None)
+        fp_base = p_fp.rsplit('.tsv')[0]
+        physio_json = json.load(open(f'{fp_base}.json'))
+        fs = physio_json['SamplingFrequency']
+        physio_df.columns = physio_json['Columns']
+        physio_df.rename(columns = {'cardiac': 'ppg', 'respiratory': 'resp'}, inplace=True)
+        physio = physio_df.to_dict('list')
+        # Trim the beginning of the physio (12sec) to account for the removal of the first four functional volumes
+        trim_n = fs*12
+        physio = {l: physio[l][trim_n:] for l in physio.keys()}
+
+    if fs_resamp is not None:
+        physio = {l: nk.signal_resample(physio[l], sampling_rate=fs, desired_sampling_rate=fs_resamp, method='FFT') 
+                  for l in physio.keys()}
+    return physio
 
 
 
@@ -197,7 +245,7 @@ def load_subj_chang_bh(subj, scan, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True
     return df
 
 
-def load_subj_hcp(subj, pc_ts, pc_ts_p, fs, norm=True):
+def load_subj_hcp(subj, pc_ts, pc_ts_p, fs, norm=True, bp_filter=True):
     p_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_physio.csv'
     csf_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_csf.txt'
     global_str = f'data/dataset_hcp/physio/proc1_physio/{subj}_global_sig.txt'
@@ -209,7 +257,8 @@ def load_subj_hcp(subj, pc_ts, pc_ts_p, fs, norm=True):
     ## IMPORTANT! CSF signal has large amplitude spikes at start of scan - set first 10 time points to median
     df['csf'].iloc[:10] = df['csf'].median()
     df['global_sig'].iloc[:10] = df['global_sig'].median()
-    df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
+    if bp_filter:
+        df = df.apply(lambda x: butterworth_filter(x, 0.01, 0.1, fs=fs, filter_type='bandpass'), axis=0)
     df['pc1'] = pc_ts[:,0]
     df['pc2'] = pc_ts[:,1]*-1 # sign flip to keep consistent with Chang PCA
     df['pc3'] = pc_ts[:,2]*-1 # sign flip to keep consistent with Chang PCA
