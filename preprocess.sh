@@ -244,28 +244,28 @@ if [ "$dataset" == "nki" ]; then
 
     # done
 
-    # Create group CSF mask
-    ## remove mask if exists
-    rm -f data/dataset_nki/anat/proc4_csfmask/group_csfmask.nii.gz
-    ## Create empty mask
-    tmp_files=(data/dataset_nki/anat/proc4_csfmask/*)    
-    fslmaths ${tmp_files[0]} -thr 2 data/dataset_nki/anat/proc4_csfmask/group_csfmask
-    ## Loop through subjects and add masks
-    for file_path in data/dataset_nki/anat/raw/*.nii.gz; do
-        filename=$(basename $file_path)
-        filename_base=$(cut -d'.' -f1 <<< "${filename}")
-        fslmaths data/dataset_nki/anat/proc4_csfmask/group_csfmask \
-        -add data/dataset_nki/anat/proc4_csfmask/${filename_base} \
-        data/dataset_nki/anat/proc4_csfmask/group_csfmask
-    done
+    # # Create group CSF mask
+    # ## remove mask if exists
+    # rm -f data/dataset_nki/anat/proc4_csfmask/group_csfmask.nii.gz
+    # ## Create empty mask
+    # tmp_files=(data/dataset_nki/anat/proc4_csfmask/*)    
+    # fslmaths ${tmp_files[0]} -thr 2 data/dataset_nki/anat/proc4_csfmask/group_csfmask
+    # ## Loop through subjects and add masks
+    # for file_path in data/dataset_nki/anat/raw/*.nii.gz; do
+    #     filename=$(basename $file_path)
+    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
+    #     fslmaths data/dataset_nki/anat/proc4_csfmask/group_csfmask \
+    #     -add data/dataset_nki/anat/proc4_csfmask/${filename_base} \
+    #     data/dataset_nki/anat/proc4_csfmask/group_csfmask
+    # done
 
-    # Threshold to >40 subjects overlap in CSF masks
-    fslmaths data/dataset_nki/anat/proc4_csfmask/group_csfmask -thr 40 -bin \
-    data/dataset_nki/anat/proc4_csfmask/group_csfmask
+    # # Threshold to >40 subjects overlap in CSF masks
+    # fslmaths data/dataset_nki/anat/proc4_csfmask/group_csfmask -thr 40 -bin \
+    # data/dataset_nki/anat/proc4_csfmask/group_csfmask
 
-    # # Mask by MNI prior probability CSF mask (thresholded)
-    fslmaths data/dataset_nki/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
-    data/dataset_nki/anat/proc4_csfmask/group_csfmask
+    # # # Mask by MNI prior probability CSF mask (thresholded)
+    # fslmaths data/dataset_nki/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
+    # data/dataset_nki/anat/proc4_csfmask/group_csfmask
 
     # mkdir -p data/dataset_nki/func/proc1_mcflirt
     # mkdir -p data/dataset_nki/func/proc2A_firstvolume
@@ -301,21 +301,21 @@ if [ "$dataset" == "nki" ]; then
     #      -ch 0.1 -t 1.4 -o data/dataset_nki/func/proc5_filter_norm/$filename
     # done
 
-    # mkdir -p data/dataset_nki/physio/proc1_physio
-    # echo "Physio preprocessing..."
-    # for file_path in data/dataset_nki/physio/raw/*.tsv.gz; do
-    #     filename=$(basename $file_path)
-    #     echo "$filename" 
-    #     # get base subject name to specify path to structural scan
-    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
-    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
-    #     # Physio extraction
-    #     python -m utils.dataset.preprocess_nki -s $file_path -o data/dataset_nki/physio/proc1_physio/$filename_base
+    mkdir -p data/dataset_nki/physio/proc1_physio
+    echo "Physio preprocessing..."
+    for file_path in data/dataset_nki/physio/raw/*.tsv.gz; do
+        filename=$(basename $file_path)
+        echo "$filename" 
+        # get base subject name to specify path to structural scan
+        subj_file=$(cut -d'_' -f1 <<< "${filename}")
+        filename_base=$(cut -d'.' -f1 <<< "${filename}")
+        # Physio extraction
+        python -m utils.dataset.preprocess_nki -s $file_path -o data/dataset_nki/physio/proc1_physio/$filename_base
         # # CSF extraction
         # fslmeants -i data/dataset_nki/func/proc3_standard/${subj_file}_task_breathhold \
         # -o data/dataset_nki/physio/proc1_physio/${subj_file}_task_breathhold_physio_csf.txt \
         # -m data/dataset_nki/anat/proc4_csfmask/group_csfmask
-    # done
+    done
 
 fi
 
@@ -425,8 +425,8 @@ if [ "$dataset" == "hcp" ]; then
         # subj_func=$(cut -d'_physio' -f1 <<< "${filename}")
         subj_func=$(echo $filename | awk 'BEGIN {FS="_physio.txt" } ; { print $1 }')
 
-        # # Physio extraction
-        # python -m utils.dataset.preprocess_hcp -s $file_path -o data/dataset_hcp/physio/proc1_physio/${subj_file}_physio -d rest
+        # Physio extraction
+        python -m utils.dataset.preprocess_hcp -s $file_path -o data/dataset_hcp/physio/proc1_physio/${subj_file}_physio -d rest
         # # Extract precuneus BOLD signal from preprocessed band-pass functional data
         # fslmeants -i data/dataset_hcp/func_fix/proc4_bandpass/${subj_func}_rest.nii.gz\
         # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_precuneus.txt \
@@ -440,17 +440,17 @@ if [ "$dataset" == "hcp" ]; then
         # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_superior_parietal.txt \
         # -m masks/superior_parietal_sphere_6mm.nii.gz
         
-        # Extract CSF signal from HCP CSF mask
-        fslmeants -i data/dataset_hcp/func_fix/raw/${subj_func}_rest.nii.gz\
-        -o data/dataset_hcp/physio/proc1_physio/${subj_file}_csf.txt \
-        -m data/dataset_hcp/anat/proc1_csfmask/group_csfmask
+        # # Extract CSF signal from HCP CSF mask
+        # fslmeants -i data/dataset_hcp/func_fix/raw/${subj_func}_rest.nii.gz\
+        # -o data/dataset_hcp/physio/proc1_physio/${subj_file}_csf.txt \
+        # -m data/dataset_hcp/anat/proc1_csfmask/group_csfmask
 
     done
 fi
 
 # Spreng - FMRI, Physio
 if [ "$dataset" == "spreng" ]; then
-    mkdir -p data/dataset_spreng/anat/raw_reorient
+    # mkdir -p data/dataset_spreng/anat/raw_reorient
     # mkdir -p data/dataset_spreng/anat/proc1_bet
     # mkdir -p data/dataset_spreng/anat/proc2_affine
     # mkdir -p data/dataset_spreng/anat/proc3_fnirt
@@ -482,125 +482,73 @@ if [ "$dataset" == "spreng" ]; then
         # data/dataset_spreng/anat/proc4_csfmask/$filename_base
     # done
 
-    # # Create group CSF mask
-    ## remove mask if exists
-    rm -f data/dataset_spreng/anat/proc4_csfmask/group_csfmask.nii.gz
-    ## Create empty mask
-    tmp_files=(data/dataset_spreng/anat/proc4_csfmask/*)    
-    fslmaths ${tmp_files[0]} -thr 2 data/dataset_spreng/anat/proc4_csfmask/group_csfmask
-    ## Loop through subjects and add masks
-    sed -n '2,$p' data/dataset_spreng/subject_list_spreng.csv | while IFS=, read -r id subj other_cols; do
-        subj_fp=${subj}_ses-1_T1w
-        fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask \
-        -add data/dataset_spreng/anat/proc4_csfmask/${subj_fp} \
-        data/dataset_spreng/anat/proc4_csfmask/group_csfmask
-    done
-
-    # Threshold to >41 subjects overlap in CSF masks
-    fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask -thr 41 -bin \
-    data/dataset_spreng/anat/proc4_csfmask/group_csfmask
-
-    # # Mask by MNI prior probability CSF mask (thresholded)
-    fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
-    data/dataset_spreng/anat/proc4_csfmask/group_csfmask
-
-    # echo "Functional preprocessing..."
-    # mkdir -p data/dataset_spreng/func/proc1_mcflirt
-    # mkdir -p data/dataset_spreng/func/proc2_slicetime
-    # mkdir -p data/dataset_spreng/func/proc3_combination
-    # mkdir -p data/dataset_spreng/func/proc3B_meica_combination
-    # mkdir -p data/dataset_spreng/func/proc4_trim
-    # mkdir -p data/dataset_spreng/func/proc5A_firstvolume
-    # mkdir -p data/dataset_spreng/func/proc5B_func2struct
-    # mkdir -p data/dataset_spreng/func/proc6_standard
-    # mkdir -p data/dataset_spreng/func/proc7_mask_smooth
-    # mkdir -p data/dataset_spreng/func/proc8_bandpass
-
-
+    # # # Create group CSF mask
+    # ## remove mask if exists
+    # rm -f data/dataset_spreng/anat/proc4_csfmask/group_csfmask.nii.gz
+    # ## Create empty mask
+    # tmp_files=(data/dataset_spreng/anat/proc4_csfmask/*)    
+    # fslmaths ${tmp_files[0]} -thr 2 data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+    # ## Loop through subjects and add masks
     # sed -n '2,$p' data/dataset_spreng/subject_list_spreng.csv | while IFS=, read -r id subj other_cols; do
-    #     echo ${subj}
-    #     subj_fp=${subj}_ses-1_task-rest
+    #     subj_fp=${subj}_ses-1_T1w
+    #     fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask \
+    #     -add data/dataset_spreng/anat/proc4_csfmask/${subj_fp} \
+    #     data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+    # done
 
-        # # Motion correction for first echo
-        # mcflirt -in data/dataset_spreng/func/raw/${subj_fp}_echo-1_bold \
-        # -out data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-1_bold -mats -meanvol 
-        # # Apply mcflirt transform params to second echo
-        # applyxfm4D data/dataset_spreng/func/raw/${subj_fp}_echo-2_bold data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-1_bold_mean_reg \
-        # data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-2_bold data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-1_bold.mat -fourdigit
-        # # Apply mcflirt transform params to third echo
-        # applyxfm4D data/dataset_spreng/func/raw/${subj_fp}_echo-3_bold data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-1_bold_mean_reg \
-        # data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-3_bold data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-1_bold.mat -fourdigit
-        # # Apply slicetiming correction to each echo
-        # for echo in {1..3}; do 
-        #     # Slice time correct with .txt file
-        #     slicetimer -i data/dataset_spreng/func/proc1_mcflirt/${subj_fp}_echo-${echo}_bold \
-        #     -o data/dataset_spreng/func/proc2_slicetime/${subj_fp}_echo-${echo}_bold --tcustom=data/dataset_spreng/slicetime_spreng.txt
-        # done 
+    # # Threshold to >41 subjects overlap in CSF masks
+    # fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask -thr 41 -bin \
+    # data/dataset_spreng/anat/proc4_csfmask/group_csfmask
 
-        # # Optimal echo combination through tedana
-        # t2smap -d data/dataset_spreng/func/proc2_slicetime/${subj_fp}_echo-1_bold.nii.gz \
-        # data/dataset_spreng/func/proc2_slicetime/${subj_fp}_echo-2_bold.nii.gz \
-        # data/dataset_spreng/func/proc2_slicetime/${subj_fp}_echo-3_bold.nii.gz -e 13.7 30.0 47.0 \
-        # --out-dir=data/dataset_spreng/func/proc3_combination/${subj_fp} --prefix=${subj_fp} \
-        # --convention=orig  
+    # # # Mask by MNI prior probability CSF mask (thresholded)
+    # fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
+    # data/dataset_spreng/anat/proc4_csfmask/group_csfmask
 
-        # # Multi-echo ICA and optimal combination through tedana
-        # tedana -d data/dataset_spreng/func/proc2_slicetime/${subj_fp}_echo-1_bold.nii.gz \
-        # data/dataset_spreng/func/proc2_slicetime/${subj_fp}_echo-2_bold.nii.gz \
-        # data/dataset_spreng/func/proc2_slicetime/${subj_fp}_echo-3_bold.nii.gz -e 13.7 30.0 47.0 \
-        # --out-dir=data/dataset_spreng/func/proc3B_meica_combination/${subj_fp} --prefix=${subj_fp} \
-        # --convention=orig
-
-    #     # Trim first 4 volumes 
-    #     python -m utils.signal.trim -f data/dataset_spreng/func/proc3B_meica_combination/${subj_fp}/${subj_fp}_dn_ts_OC.nii.gz \
-    #     -o data/dataset_spreng/func/proc4_trim/${subj_fp}.nii.gz -n 4
-
-    #     # # Select first volume from each functional
-    #     fslroi data/dataset_spreng/func/proc4_trim/${subj_fp} data/dataset_spreng/func/proc5A_firstvolume/${subj_fp} 0 1
-    #     # Co-registration with structural
-    #     epi_reg --epi=data/dataset_spreng/func/proc5A_firstvolume/${subj_fp} \
-    #     --t1="data/dataset_spreng/anat/raw_reorient/${subj}_ses-1_T1w" --t1brain="data/dataset_spreng/anat/proc1_bet/${subj}_ses-1_T1w" \
-    #     --out=data/dataset_spreng/func/proc5B_func2struct/${subj_fp}
-    #     # Get transform file to send functional to MNI
-    #     applywarp --ref=masks/MNI152_T1_3mm_brain.nii.gz --in=data/dataset_spreng/func/proc4_trim/${subj_fp} \
-    #     --out=data/dataset_spreng/func/proc6_standard/${subj_fp} --warp="data/dataset_spreng/anat/proc3_fnirt/${subj}_ses-1_T1w.nii.gz.mat.nii.gz" \
-    #     --premat="data/dataset_spreng/func/proc5B_func2struct/${subj_fp}.mat" 
-    #     # Mask
-    #     fslmaths data/dataset_spreng/func/proc6_standard/${subj_fp} -mul $mask -kernel gauss 2.123 \
-    #     -fmean data/dataset_spreng/func/proc7_mask_smooth/${subj_fp}
-    #     # bandpass filter (0.1Hz) and norm
-    #     python -m utils.signal.norm_filter -f data/dataset_spreng/func/proc7_mask_smooth/${subj_fp}.nii.gz -m $mask \
-    #     -ch 0.1 -cl 0.01 -t 3 -o data/dataset_spreng/func/proc8_bandpass/${subj_fp}.nii.gz
-
-    # done  
-
-    mkdir -p data/dataset_spreng/physio/proc1_physio
-    echo "Physio preprocessing..."
-    for file_path in data/dataset_spreng/physio/raw/*.tsv.gz; do
+    mkdir -p data/dataset_spreng/func/proc1_resample
+    mkdir -p data/dataset_spreng/func/proc2_mask_smooth
+    mkdir -p data/dataset_spreng/func/proc3_bandpass
+    echo "Functional preprocessing..."
+    for file_path in data/dataset_spreng/func/raw/*.nii; do
         filename=$(basename $file_path)
         echo "$filename" 
-        subj_file=$(cut -d'_' -f1 <<< "${filename}")
-        filename_base=$(cut -d'.' -f1 <<< "${filename}")
-        # # HR and RV extraction
-        # python -m utils.dataset.preprocess_spreng -s $file_path -o data/dataset_spreng/physio/proc1_physio/$filename_base
-        # Extract global BOLD signal from smoothed functional data
-        # fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
-        # -o data/dataset_spreng/physio/proc1_physio/${filename_base}_global_sig.txt \
-        # -m masks/MNI152_T1_3mm_gray_mask.nii.gz 
-        # CSF extraction
-        fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
-        -o data/dataset_spreng/physio/proc1_physio/${filename_base}_csf.txt \
-        -m data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+        # # Resample to 3mm
+        # flirt -in $file_path -ref masks/MNI152_T1_3mm_brain.nii.gz -out data/dataset_spreng/func/proc1_resample/$filename -applyisoxfm 3 \
+        # -usesqform
+        # # Mask and smooth
+        # fslmaths data/dataset_spreng/func/proc1_resample/$filename -mul $mask -kernel gauss 2.123 \
+        # -fmean data/dataset_spreng/func/proc2_mask_smooth/$filename
+        # band pass filter (0.01-0.1Hz)
+        python -m utils.signal.norm_filter -f data/dataset_spreng/func/proc2_mask_smooth/${filename}.gz -m $mask \
+         -ch 0.1 -cl 0.01 -t 3 -o data/dataset_spreng/func/proc3_bandpass/${filename}
     done
+
+    # mkdir -p data/dataset_spreng/physio/proc1_physio
+    # echo "Physio preprocessing..."
+    # for file_path in data/dataset_spreng/physio/raw/*.tsv.gz; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename" 
+    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
+    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
+    #     # HR and RV extraction
+    #     python -m utils.dataset.preprocess_spreng -s $file_path -o data/dataset_spreng/physio/proc1_physio/$filename_base
+    #     # Extract global BOLD signal from smoothed functional data
+    #     # fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
+    #     # -o data/dataset_spreng/physio/proc1_physio/${filename_base}_global_sig.txt \
+    #     # -m masks/MNI152_T1_3mm_gray_mask.nii.gz 
+    #     # # CSF extraction
+    #     # fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
+    #     # -o data/dataset_spreng/physio/proc1_physio/${filename_base}_csf.txt \
+    #     # -m data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+    # done
 
 fi 
 
 # Yale - FMRI, Pupillometry
 if [ "$dataset" == "yale" ]; then
-    mkdir -p data/dataset_yale/anat/proc1_bet
-    mkdir -p data/dataset_yale/anat/proc2_affine
-    mkdir -p data/dataset_yale/anat/proc3_fnirt
-    mkdir -p data/dataset_yale/anat/proc4_csfmask
+    # mkdir -p data/dataset_yale/anat/proc1_bet
+    # mkdir -p data/dataset_yale/anat/proc2_affine
+    # mkdir -p data/dataset_yale/anat/proc3_fnirt
+    # mkdir -p data/dataset_yale/anat/proc4_csfmask
 
 
     # echo "Structural preprocessing..."
@@ -628,76 +576,77 @@ if [ "$dataset" == "yale" ]; then
     #     data/dataset_yale/anat/proc4_csfmask/$filename_base
     # done
 
-    # # Create group CSF mask
-    ## remove mask if exists
-    rm -f data/dataset_yale/anat/proc4_csfmask/group_csfmask.nii.gz
-    ## Create empty mask
-    tmp_files=(data/dataset_spreng/anat/proc4_csfmask/*)    
-    fslmaths ${tmp_files[0]} -thr 2 data/dataset_yale/anat/proc4_csfmask/group_csfmask
-    ## Loop through subjects and add masks
-    for subj_mask in data/dataset_yale/anat/proc4_csfmask/*_T1w.nii.gz; do
-        fslmaths data/dataset_yale/anat/proc4_csfmask/group_csfmask \
-        -add $subj_mask data/dataset_yale/anat/proc4_csfmask/group_csfmask
-    done
-
-    # Threshold to >25 subjects overlap in CSF masks
-    fslmaths data/dataset_yale/anat/proc4_csfmask/group_csfmask -thr 25 -bin \
-    data/dataset_yale/anat/proc4_csfmask/group_csfmask
-
-    # Mask by MNI prior probability CSF mask (thresholded)
-    fslmaths data/dataset_yale/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
-    data/dataset_yale/anat/proc4_csfmask/group_csfmask
-
-    # mkdir -p data/dataset_yale/func/procA_trim
-    # mkdir -p data/dataset_yale/func/proc1_mcflirt
-    # mkdir -p data/dataset_yale/func/proc2A_firstvolume
-    # mkdir -p data/dataset_yale/func/proc2B_func2struct
-    # mkdir -p data/dataset_yale/func/proc3_standard
-    # mkdir -p data/dataset_yale/func/proc4_mask_smooth
-    # mkdir -p data/dataset_yale/func/proc5_bandpass
-    
-    # echo "Functional preprocessing..."
-    # for file_path in data/dataset_yale/func/raw/*.nii.gz; do
-    #     filename=$(basename $file_path)
-    #     echo "$filename" 
-    #     # get base subject name to specify path to structural scan
-    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
-    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
-
-        # # Trim first ten volumes
-        # python -m utils.signal.trim -f $file_path -o data/dataset_yale/func/procA_trim/$filename -n 10
-        # # Motion correction (re-alignment)
-        # mcflirt -in data/dataset_yale/func/procA_trim/$filename -out data/dataset_yale/func/proc1_mcflirt/$filename -plots
-        # # Select first volume from each functional
-        # fslroi data/dataset_yale/func/proc1_mcflirt/$filename data/dataset_yale/func/proc2A_firstvolume/$filename 0 1
-        # # Co-registration with structural
-        # epi_reg --epi=data/dataset_yale/func/proc2A_firstvolume/$filename \
-        # --t1="data/dataset_yale/anat/raw/${subj_file}_T1w" --t1brain="data/dataset_yale/anat/proc1_bet/${subj_file}_T1w" \
-        # --out=data/dataset_yale/func/proc2B_func2struct/$filename
-        # # Get transform file to send functional to MNI
-        # applywarp --ref=masks/MNI152_T1_3mm_brain.nii.gz --in=data/dataset_yale/func/proc1_mcflirt/$filename \
-        # --out=data/dataset_yale/func/proc3_standard/$filename --warp="data/dataset_yale/anat/proc3_fnirt/${subj_file}_T1w.nii.gz.mat.nii.gz" \
-        # --premat="data/dataset_yale/func/proc2B_func2struct/${filename_base}.mat" 
-        # # Mask
-        # fslmaths data/dataset_yale/func/proc3_standard/$filename -mul $mask -kernel gauss 2.123 \
-        # -fmean data/dataset_yale/func/proc4_mask_smooth/$filename
-        # bandpass filter (0.1Hz) and norm
-    #     python -m utils.signal.norm_filter -f data/dataset_yale/func/proc4_mask_smooth/$filename -m $mask \
-    #      -ch 0.1 -cl 0.01 -t 1 -o data/dataset_yale/func/proc5_bandpass/$filename
-
+    # # # Create group CSF mask
+    # ## remove mask if exists
+    # rm -f data/dataset_yale/anat/proc4_csfmask/group_csfmask.nii.gz
+    # ## Create empty mask
+    # tmp_files=(data/dataset_spreng/anat/proc4_csfmask/*)    
+    # fslmaths ${tmp_files[0]} -thr 2 data/dataset_yale/anat/proc4_csfmask/group_csfmask
+    # ## Loop through subjects and add masks
+    # for subj_mask in data/dataset_yale/anat/proc4_csfmask/*_T1w.nii.gz; do
+    #     fslmaths data/dataset_yale/anat/proc4_csfmask/group_csfmask \
+    #     -add $subj_mask data/dataset_yale/anat/proc4_csfmask/group_csfmask
     # done
 
-    mkdir -p data/dataset_yale/physio/proc1_physio
-    echo "Physio preprocessing..."
-    for file_path in data/dataset_yale/func/proc3_standard/*.nii.gz; do
+    # # Threshold to >25 subjects overlap in CSF masks
+    # fslmaths data/dataset_yale/anat/proc4_csfmask/group_csfmask -thr 25 -bin \
+    # data/dataset_yale/anat/proc4_csfmask/group_csfmask
+
+    # # Mask by MNI prior probability CSF mask (thresholded)
+    # fslmaths data/dataset_yale/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
+    # data/dataset_yale/anat/proc4_csfmask/group_csfmask
+
+    mkdir -p data/dataset_yale/func/procA_trim
+    mkdir -p data/dataset_yale/func/proc1_mcflirt
+    mkdir -p data/dataset_yale/func/proc2A_firstvolume
+    mkdir -p data/dataset_yale/func/proc2B_func2struct
+    mkdir -p data/dataset_yale/func/proc3_standard
+    mkdir -p data/dataset_yale/func/proc4_mask_smooth
+    mkdir -p data/dataset_yale/func/proc5_bandpass
+    
+    echo "Functional preprocessing..."
+    for file_path in data/dataset_yale/func/raw/*.nii.gz; do
         filename=$(basename $file_path)
         echo "$filename" 
         # get base subject name to specify path to structural scan
         subj_file=$(cut -d'_' -f1 <<< "${filename}")
         filename_base=$(cut -d'.' -f1 <<< "${filename}")
-        fslmeants -i $file_path -o data/dataset_yale/physio/proc1_physio/${filename_base}_csf.txt \
-        -m data/dataset_yale/anat/proc4_csfmask/group_csfmask
+
+        # Trim first ten volumes (index starts at 0)
+        python -m utils.signal.trim -f $file_path -o data/dataset_yale/func/procA_trim/$filename -n 10
+        # Motion correction (re-alignment)
+        mcflirt -in data/dataset_yale/func/procA_trim/$filename -out data/dataset_yale/func/proc1_mcflirt/$filename -plots
+        # Select first volume from each functional
+        fslroi data/dataset_yale/func/proc1_mcflirt/$filename data/dataset_yale/func/proc2A_firstvolume/$filename 0 1
+        # Co-registration with structural
+        epi_reg --epi=data/dataset_yale/func/proc2A_firstvolume/$filename \
+        --t1="data/dataset_yale/anat/raw/${subj_file}_T1w" --t1brain="data/dataset_yale/anat/proc1_bet/${subj_file}_T1w" \
+        --out=data/dataset_yale/func/proc2B_func2struct/$filename
+        # Get transform file to send functional to MNI
+        applywarp --ref=masks/MNI152_T1_3mm_brain.nii.gz --in=data/dataset_yale/func/proc1_mcflirt/$filename \
+        --out=data/dataset_yale/func/proc3_standard/$filename --warp="data/dataset_yale/anat/proc3_fnirt/${subj_file}_T1w.nii.gz.mat.nii.gz" \
+        --premat="data/dataset_yale/func/proc2B_func2struct/${filename_base}.mat" 
+        # Mask
+        fslmaths data/dataset_yale/func/proc3_standard/$filename -mul $mask -kernel gauss 2.123 \
+        -fmean data/dataset_yale/func/proc4_mask_smooth/$filename
+        # bandpass filter (0.1Hz) and norm
+        python -m utils.signal.norm_filter -f data/dataset_yale/func/proc4_mask_smooth/$filename -m $mask \
+         -ch 0.1 -cl 0.01 -t 1 -o data/dataset_yale/func/proc5_bandpass/$filename
+
     done
+
+    # mkdir -p data/dataset_yale/physio/proc1_physio
+    # echo "Physio preprocessing..."
+    # for file_path in data/dataset_yale/func/proc3_standard/*.nii.gz; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename" 
+    #     # get base subject name to specify path to structural scan
+    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
+    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
+    #     # CSF extraction
+    #     fslmeants -i $file_path -o data/dataset_yale/physio/proc1_physio/${filename_base}_csf.txt \
+    #     -m data/dataset_yale/anat/proc4_csfmask/group_csfmask
+    # done
 fi
 
 
