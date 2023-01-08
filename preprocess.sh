@@ -504,13 +504,13 @@ if [ "$dataset" == "spreng" ]; then
     # fslmaths data/dataset_spreng/anat/proc4_csfmask/group_csfmask -mul masks/MNI152_T1_3mm_csf_mask \
     # data/dataset_spreng/anat/proc4_csfmask/group_csfmask
 
-    mkdir -p data/dataset_spreng/func/proc1_resample
-    mkdir -p data/dataset_spreng/func/proc2_mask_smooth
-    mkdir -p data/dataset_spreng/func/proc3_bandpass
-    echo "Functional preprocessing..."
-    for file_path in data/dataset_spreng/func/raw/*.nii; do
-        filename=$(basename $file_path)
-        echo "$filename" 
+    # mkdir -p data/dataset_spreng/func/proc1_resample
+    # mkdir -p data/dataset_spreng/func/proc2_mask_smooth
+    # mkdir -p data/dataset_spreng/func/proc3_bandpass
+    # echo "Functional preprocessing..."
+    # for file_path in data/dataset_spreng/func/raw/*.nii; do
+    #     filename=$(basename $file_path)
+    #     echo "$filename" 
         # # Resample to 3mm
         # flirt -in $file_path -ref masks/MNI152_T1_3mm_brain.nii.gz -out data/dataset_spreng/func/proc1_resample/$filename -applyisoxfm 3 \
         # -usesqform
@@ -518,28 +518,28 @@ if [ "$dataset" == "spreng" ]; then
         # fslmaths data/dataset_spreng/func/proc1_resample/$filename -mul $mask -kernel gauss 2.123 \
         # -fmean data/dataset_spreng/func/proc2_mask_smooth/$filename
         # band pass filter (0.01-0.1Hz)
-        python -m utils.signal.norm_filter -f data/dataset_spreng/func/proc2_mask_smooth/${filename}.gz -m $mask \
-         -ch 0.1 -cl 0.01 -t 3 -o data/dataset_spreng/func/proc3_bandpass/${filename}
-    done
-
-    # mkdir -p data/dataset_spreng/physio/proc1_physio
-    # echo "Physio preprocessing..."
-    # for file_path in data/dataset_spreng/physio/raw/*.tsv.gz; do
-    #     filename=$(basename $file_path)
-    #     echo "$filename" 
-    #     subj_file=$(cut -d'_' -f1 <<< "${filename}")
-    #     filename_base=$(cut -d'.' -f1 <<< "${filename}")
-    #     # HR and RV extraction
-    #     python -m utils.dataset.preprocess_spreng -s $file_path -o data/dataset_spreng/physio/proc1_physio/$filename_base
-    #     # Extract global BOLD signal from smoothed functional data
-    #     # fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
-    #     # -o data/dataset_spreng/physio/proc1_physio/${filename_base}_global_sig.txt \
-    #     # -m masks/MNI152_T1_3mm_gray_mask.nii.gz 
-    #     # # CSF extraction
-    #     # fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
-    #     # -o data/dataset_spreng/physio/proc1_physio/${filename_base}_csf.txt \
-    #     # -m data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+    #     python -m utils.signal.norm_filter -f data/dataset_spreng/func/proc2_mask_smooth/${filename}.gz -m $mask \
+    #      -ch 0.1 -cl 0.01 -t 3 -o data/dataset_spreng/func/proc3_bandpass/${filename}
     # done
+
+    mkdir -p data/dataset_spreng/physio/proc1_physio
+    echo "Physio preprocessing..."
+    for file_path in data/dataset_spreng/physio/raw/*.tsv.gz; do
+        filename=$(basename $file_path)
+        echo "$filename" 
+        subj_file=$(cut -d'_' -f1 <<< "${filename}")
+        filename_base=$(cut -d'.' -f1 <<< "${filename}")
+        # HR and RV extraction
+        python -m utils.dataset.preprocess_spreng -s $file_path -o data/dataset_spreng/physio/proc1_physio/$filename_base
+        # Extract global BOLD signal from smoothed functional data
+        # fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
+        # -o data/dataset_spreng/physio/proc1_physio/${filename_base}_global_sig.txt \
+        # -m masks/MNI152_T1_3mm_gray_mask.nii.gz 
+        # # CSF extraction
+        # fslmeants -i data/dataset_spreng/func/proc6_standard/${subj_file}_ses-1_task-rest \
+        # -o data/dataset_spreng/physio/proc1_physio/${filename_base}_csf.txt \
+        # -m data/dataset_spreng/anat/proc4_csfmask/group_csfmask
+    done
 
 fi 
 

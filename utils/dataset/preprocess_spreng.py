@@ -55,8 +55,9 @@ def process_physio(physio_signals, sf_physio):
 
 def load_physio(subj):
     physio_df = pd.read_csv(subj, compression='gzip', sep='\t', header=None)
-    subj_base = subj.rsplit('.tsv')[0]
-    physio_json = json.load(open(f'{subj_base}.json'))
+    subj_label = os.path.basename(subj).split('_')[0]
+    subj_dir = os.path.dirname(subj)
+    physio_json = json.load(open(f'{subj_dir}/{subj_label}_task-rest_physio.json'))
     physio_df.columns = physio_json['Columns']
     physio_df.rename(columns = {'cardiac': 'ppg', 'respiratory': 'resp'}, inplace=True)
     sf_physio = physio_json['SamplingFrequency']

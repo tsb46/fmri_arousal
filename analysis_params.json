@@ -212,9 +212,9 @@
 		"subject_list": "data/dataset_spreng/subject_list_spreng.csv", 
 		"tr": 3,
 		"physio": ["hr", "rv", "ppg_low"],
-		"nscans": 50,
+		"nscans": 165,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
-		"func_dir": "data/dataset_spreng/func/proc8_bandpass",
+		"func_dir": "data/dataset_spreng/func/proc3_bandpass",
 		"physio_dir": "data/dataset_spreng/physio/proc1_physio",
 		"data": { 
 			"func": {

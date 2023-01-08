@@ -38,7 +38,7 @@ physio_type = {
 def find_fps(data, physio, params, subj_n=None, scan=None):
     subj_list = load_subject_list(params['subject_list'])
     physio_fp = physio.copy()
-    if (data == 'chang') | (data == 'chang_bh') | (data == 'yale'):
+    if (data == 'chang') | (data == 'chang_bh') | (data == 'yale') | (data == 'spreng'):
         search_terms = subj_list[['subject', 'scan']].values.tolist()
     elif (data == 'hcp'):
         search_terms = subj_list[['subject', 'lr']].values.tolist()
@@ -64,7 +64,8 @@ def find_fps(data, physio, params, subj_n=None, scan=None):
         fps = {d_type: [fp_hcp(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
     elif data == 'spreng':
-        fps = {d_type: [fp_spreng(d_type, subj, params) for subj in search_terms] for d_type in physio_fp}
+        fps = {d_type: [fp_spreng(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
+               for d_type in physio_fp}
     elif data == 'yale':
         fps = {d_type: [fp_yale(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
@@ -127,11 +128,11 @@ def fp_nki(data_type, subj, params):
     return f_str
 
 
-def fp_spreng(data_type, subj, params):
+def fp_spreng(data_type, subj, scan, params):
     if physio_type[data_type] == 'func':
-        f_str = f'{params["func_dir"]}/{subj}_ses-1_task-rest.nii.gz' 
+        f_str = f'{params["func_dir"]}/{subj}_task-rest_{scan}_echo-123_bold_medn_afw.nii' 
     elif physio_type[data_type] == 'physio':
-        f_str = f'{params["physio_dir"]}/{subj}_ses-1_task-rest_physio_{physio_dict[data_type]}.txt'
+        f_str = f'{params["physio_dir"]}/{subj}_task-rest_{scan}_physio_{physio_dict[data_type]}.txt'
 
     return f_str
 
