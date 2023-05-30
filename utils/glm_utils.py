@@ -29,15 +29,7 @@ def construct_lag_splines(physio_var, p_nlags, n_n_lags, nknots):
     lag_mat = pd.concat([physio_var.shift(l) for l in seq_lag], axis=1)
     for l in np.arange(lag_splines.shape[1]):
         basis_lag[:, l] = np.dot(lag_mat.values, lag_splines.iloc[:,l].values)
-    return basis_lag, lag_splines
-
-
-def construct_tensor_spline(v1, v2, nknots):
-    # Define model formula
-    spline_basis = dmatrix("te(cr(x, df=nknots), cr(y, df=nknots)) - 1", 
-                          {"x": v1, 'y': v2}, 
-                          return_type='dataframe')
-    return spline_basis
+    return basis_lag, lag_splines    
 
 
 def convolve_hrf(hrf, ts):

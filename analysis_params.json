@@ -108,6 +108,60 @@
 			}
 		}
 	},
+	"chang_cue": {
+		"subject_list": "data/dataset_chang_cue/subject_list_chang_cue.csv",
+		"tr": 2.1,
+		"physio": ["vigilance", "hr", "rv", "alpha", "delta", "infraslow", "ppg_low", 
+			"global_sig"],
+		"nscans": 7,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_chang_cue/func/proc3_bandpass",
+		"eeg_dir": "data/dataset_chang_cue/eeg/proc1_fbands",
+		"physio_dir": "data/dataset_chang_cue/physio/proc1_physio",
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"concat_method": "zscore",
+				"filter_params": {
+					"filter_choice": {
+						"vigilance": "lowpass",
+						"hr": "bandpass",
+						"rv": "bandpass",
+						"csf": "bandpass",
+						"alpha": "bandpass",
+						"delta": "bandpass",
+						"infraslow": "raw",
+						"ppg_low": "raw",
+						"global_sig": "highpass"
+					},
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			}
+		}
+	},
 	"nki": {
 		"subject_list": "data/dataset_nki/subject_list_nki.csv",
 		"tr": 1.4,
@@ -303,6 +357,50 @@
 						"noise_perc": 5,
 						"window_size": 100,
 						"interpolation_window": [2,2]
+					}
+				}
+			}
+		}
+	},
+	"natview": {
+		"subject_list": "data/dataset_natview/subject_list_natview.csv",
+		"tr": 2.1,
+		"physio": ["pupil"],
+		"nscans": 38,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func_dir": "data/dataset_natview/func/proc3_bandpass",
+		"physio_dir": "data/dataset_natview/physio/raw",
+		"data": { 
+			"func": {
+				"filter_params": {
+					"filter_choice": "raw",
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
+					}
+				}
+			},
+			"physio": {
+				"concat_method": "zscore",
+				"filter_params": {
+					"filter_choice": {
+						"pupil": "bandpass"
+					},
+					"bandpass" : {
+						"low": 0.01,
+						"high": 0.1	
+					},
+					"lowpass": {
+						"high": 0.1
+					},
+					"highpass": {
+						"low": 0.01
 					}
 				}
 			}

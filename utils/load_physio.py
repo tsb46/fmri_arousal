@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils.signal.butterworth_filters import butterworth_filter
+from utils.signal_utils import butterworth_filter
 from scipy.interpolate import interp1d
 from scipy.signal import find_peaks_cwt
 from scipy.stats import zscore

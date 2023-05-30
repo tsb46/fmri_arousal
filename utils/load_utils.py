@@ -38,7 +38,7 @@ physio_type = {
 def find_fps(data, physio, params, subj_n=None, scan=None):
     subj_list = load_subject_list(params['subject_list'])
     physio_fp = physio.copy()
-    if (data == 'chang') | (data == 'chang_bh') | (data == 'yale') | (data == 'spreng'):
+    if data in ['chang', 'chang_bh', 'chang_cue', 'yale', 'spreng', 'natview']: 
         search_terms = subj_list[['subject', 'scan']].values.tolist()
     elif (data == 'hcp'):
         search_terms = subj_list[['subject', 'lr']].values.tolist()
@@ -58,6 +58,9 @@ def find_fps(data, physio, params, subj_n=None, scan=None):
     elif data == 'chang_bh':
         fps = {d_type: [fp_chang_bh(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
+    elif data == 'chang_cue':
+        fps = {d_type: [fp_chang_cue(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
+               for d_type in physio_fp}
     elif data == 'nki':
         fps = {d_type: [fp_nki(d_type, subj, params) for subj in search_terms] for d_type in physio_fp}
     elif (data == 'hcp'):
@@ -68,6 +71,9 @@ def find_fps(data, physio, params, subj_n=None, scan=None):
                for d_type in physio_fp}
     elif data == 'yale':
         fps = {d_type: [fp_yale(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
+               for d_type in physio_fp}
+    elif data == 'natview':
+        fps = {d_type: [fp_natview(d_type, subj_scan[0],subj_scan[1], params) for subj_scan in search_terms] 
                for d_type in physio_fp}
     return fps
 
@@ -108,6 +114,24 @@ def fp_chang_bh(data_type, subj, scan, params):
     return f_str
 
 
+def fp_chang_cue(data_type, subj, scan, params):
+    if scan < 10:
+        scan_str = f'000{scan}'
+    else:
+        scan_str = f'00{scan}'
+
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/sub_00{subj}-mr_{scan_str}-ectp_echo1_w_dspk_dtr_blur3mm.nii.gz' 
+    elif physio_type[data_type] == 'eeg':
+        f_str = f'{params["eeg_dir"]}/sub_00{subj}_mr_{scan_str}_fbands_{physio_dict[data_type]}.txt'
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/sub_00{subj}_mr_{scan_str}_physio_{physio_dict[data_type]}.txt'
+    elif physio_type[data_type] == 'global_sig':
+        f_str = f'{params["physio_dir"]}/sub_00{subj}_mr_{scan_str}_{physio_dict[data_type]}.txt'
+
+    return f_str
+
+
 def fp_hcp(data_type, subj, scan, params):
     if physio_type[data_type] == 'func':
         f_str = f'{params["func_dir"]}/{subj}_{scan}1_rest.nii.gz' 
@@ -115,6 +139,20 @@ def fp_hcp(data_type, subj, scan, params):
         f_str = f'{params["physio_dir"]}/{subj}_physio_{physio_dict[data_type]}.txt'
     elif physio_type[data_type] == 'global_sig':
         f_str = f'{params["physio_dir"]}/{subj}_{physio_dict[data_type]}.txt'
+
+    return f_str
+
+
+def fp_natview(data_type, subj, scan, params):
+    if subj < 10:
+        subj_str = f'0{subj}'
+    else:
+        subj_str = f'{subj}'
+
+    if physio_type[data_type] == 'func':
+        f_str = f'{params["func_dir"]}/sub-{subj_str}_ses-0{scan}_func_mc.nii.gz'
+    elif physio_type[data_type] == 'physio':
+        f_str = f'{params["physio_dir"]}/{subj}_task-rest_run-0{scan}_et.txt'
 
     return f_str
 

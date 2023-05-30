@@ -134,8 +134,10 @@ data/dataset_chang/*/
 data/dataset_nki/*/
 data/dataset_hcp/*/
 data/dataset_chang_bh/*/
+data/dataset_chang_cue/*/
 data/dataset_spreng/*/
 data/dataset_yale/*/
+data/dataset_natview/*/
 
 
 

@@ -7,7 +7,7 @@ import os
 from scipy.io import loadmat 
 from scipy.stats import zscore
 from sklearn.linear_model import LinearRegression
-from utils.signal.butterworth_filters import filter_functional_data
+from utils.signal_utils import butterworth_filter
 from utils.load_utils import find_fps, print_filter_info
 from utils.load_physio import preprocess_physio
 
@@ -77,7 +77,7 @@ def load_data(data, physio, load_physio, group_method='stack', physio_group_meth
     params = load_params()
 
     # Pull physio labels (if not already selected)
-    if (data == 'hcp_fix') | (data == 'hcp_rel') | (data == 'hcp_wm'):
+    if data == 'hcp_fix':
         data_str = 'hcp'
     else:
         data_str = data

@@ -98,8 +98,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run PCA or CPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'nki', 'hcp', 
-                                 'spreng', 'yale'], 
+                        choices=['chang', 'chang_bh', 'chang_cue', 'nki', 'hcp', 
+                                 'spreng', 'yale', 'natview'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',
