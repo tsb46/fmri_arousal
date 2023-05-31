@@ -2,6 +2,7 @@ import argparse
 import boto3
 import botocore
 import csv
+import openneuro as on
 import os
 import pandas as pd
 import shutil
@@ -9,18 +10,21 @@ import shutil
 from botocore import UNSIGNED
 from botocore.client import Config
 # import downloader script provided NKI
-from datasets_nki.download_rockland_raw_bids_ver2 import collect_and_download as \
+from dataset_nki.download_rockland_raw_bids_ver2 import collect_and_download as \
 	collect_and_download_nki
 
 
-def download_hcp(subjects)
+# Datasets for download
+dataset = ['nki', 'hcp', 'yale', 'natview']
+
+def download_hcp(subjects):
 	# Code borrowed and modified from:
 	# https://github.com/jokedurnez/HCP_download
 	# download HCP data from AWS via boto3
 
 	# Create directories
-	os.makedirs('func/raw', exist_ok=True)
-	os.makedirs('physio/raw', exist_ok=True)
+	os.makedirs('dataset_hcp/func/raw', exist_ok=True)
+	os.makedirs('dataset_hcp/physio/raw', exist_ok=True)
 
 	# Set up S3 bucket
 	boto3.setup_default_session(profile_name='hcp')
@@ -111,8 +115,8 @@ def download_nki(subjects, aws_links):
 	                      f'dataset_nki/physio/raw/{subj}_task_breathhold_physio.tsv.gz')
 	            os.rename(f'{physio(subj,"FLU2")}.json', 
 	                      f'dataset_nki/physio/raw/{subj}_task_breathhold_physio.json')
-    # Delete temporary aws folder
-    shutil.rmtree('dataset_nki/aws_dir')
+	# Delete temporary aws folder
+	shutil.rmtree('dataset_nki/aws_dir')
 
 
 def download_natview(subjects):
@@ -231,7 +235,7 @@ def download_yale(subjects):
 
 	full_list = anat_list + func_list + eye_list
 
-	on.download(dataset=ds_num, tag=tag_num, target_dir='aws_dir', 
+	on.download(dataset=ds_num, tag=tag_num, target_dir='dataset_yale/aws_dir', 
 	            include=full_list)
 
 	# Re-organize folders
@@ -252,7 +256,7 @@ def download_yale(subjects):
 	        os.rename(f'dataset_yale/aws_dir/{on_eye(subj, scan)}', 
 	                  f'dataset_yale/physio/raw/{subj}_task-rest_run-0{scan}_et.tsv')
 	# Delete temporary aws folder
-    shutil.rmtree('dataset_yale/aws_dir')
+	shutil.rmtree('dataset_yale/aws_dir')
 
 
 def pull_data(dataset):
@@ -284,14 +288,9 @@ if __name__ == '__main__':
                         choices=['all', 'nki', 'hcp', 'yale', 'natview'], 
                         required=True,
                         type=str)
-    parser.add_argument('-n', '--n_cores',
-                        help='number of cores to use for parallel processing',
-                        default = 1,
-                        required=False,
-                        type=int)
     args_dict = vars(parser.parse_args())
     if args_dict['dataset'] == 'all':
         for d in dataset:
-            pull_data(d, args_dict['n_cores'])
+            pull_data(d)
     else:
-        pull_data(args_dict['dataset'], args_dict['n_cores'])
+        pull_data(args_dict['dataset'])

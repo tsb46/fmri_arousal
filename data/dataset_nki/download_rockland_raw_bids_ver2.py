@@ -97,6 +97,7 @@ def collect_and_download(out_dir,
     from botocore import UNSIGNED
     from botocore.client import Config
     from botocore.handlers import disable_signing
+    import os
 
     # Init variables
     s3_bucket_name = 'fcp-indi'
