@@ -16,6 +16,8 @@ from dataset_nki.download_rockland_raw_bids_ver2 import collect_and_download as 
 
 # Datasets for download
 dataset = ['nki', 'hcp', 'yale', 'natview']
+dataset = ['natview']
+
 
 def download_hcp(subjects):
 	# Code borrowed and modified from:
@@ -40,12 +42,12 @@ def download_hcp(subjects):
 
 	    # Pull hcp-fix cleaned cifti file
 	    func_fp = f'{s_dir}/rfMRI_REST1_{lr}_hp2000_clean.nii.gz'
-	    func_out = f'func/raw/{s}_{lr}_hp2000_clean.nii.gz'
+	    func_out = f'dataset_hcp/func/raw/{s}_{lr}_hp2000_clean.nii.gz'
 	    bucket.download_file(func_fp, func_out)
 
 	    # Pull physio .txt file
 	    phys_fp = f'{s_dir}/rfMRI_REST1_{lr}_Physio_log.txt'
-	    phys_out = f'physio/raw/{s}_{lr}_physio.txt'
+	    phys_out = f'dataset_hcp/physio/raw/{s}_{lr}_physio.txt'
 	    bucket.download_file(phys_fp, phys_out)
 
 
@@ -159,7 +161,7 @@ def download_natview(subjects):
 	eeg_templates = [eeg_template, eeg_channel_template, eeg_json_template]
 
 	# Load subject list and iterate through subjects
-	for s, ses in zip(subjects.subject, subjects.sess):
+	for s, ses in zip(subjects.subject, subjects.scan):
 	    # subject session integers to strings
 	    if s < 10:
 	        subj = f'0{s}'
