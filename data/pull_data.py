@@ -16,7 +16,6 @@ from dataset_nki.download_rockland_raw_bids_ver2 import collect_and_download as 
 
 # Datasets for download
 dataset = ['nki', 'hcp', 'yale', 'natview']
-dataset = ['natview']
 
 
 def download_hcp(subjects):
