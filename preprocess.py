@@ -800,7 +800,7 @@ if __name__ == '__main__':
                         type=int)
     args_dict = vars(parser.parse_args())
     if args_dict['dataset'] == 'all':
-        for d in dataset:
+        for d in datasets:
             preprocess(d, args_dict['n_cores'])
     else:
         preprocess(args_dict['dataset'], args_dict['n_cores'])
