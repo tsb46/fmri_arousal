@@ -329,11 +329,11 @@ def get_fp(dataset):
             'out': 'sub_00{0}-mr_{1}-ectp_physio'
         }
     elif dataset == 'hcp':
-        func = '{0}_{1}1_rest.nii.gz'
+        func = '{0}_{1}_hp2000_clean.nii.gz'
         anat = None
         physio = {
-          'physio': '{0}_{1}1_physio.txt',
-          'out': '{0}_{1}1_physio'
+          'physio': '{0}_{1}_physio.txt',
+          'out': '{0}_{1}_physio'
         }
     elif dataset == 'natview':
         func='sub-{0}_ses-0{1}_func_mc.nii.gz'
