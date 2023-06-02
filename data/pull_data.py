@@ -246,7 +246,7 @@ def download_yale(subjects):
 
 	# Move all subject files
 	for subj, scan in zip(subj_list, scan_list):
-	    if scan == '1':
+	    if scan == 1:
 	        if os.path.exists(f'dataset_yale/aws_dir/{on_anat(subj)}'):
 	            os.rename(f'dataset_yale/aws_dir/{on_anat(subj)}', 
 	                      f'dataset_yale/anat/raw/{subj}_T1w.nii.gz')
