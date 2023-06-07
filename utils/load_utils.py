@@ -35,6 +35,7 @@ physio_type = {
     'pupil': 'physio'
 }
 
+
 def find_fps(data, physio, params, subj_n=None, scan=None):
     subj_list = load_subject_list(params['subject_list'])
     physio_fp = physio.copy()
@@ -182,6 +183,16 @@ def fp_yale(data_type, subj, scan, params):
         f_str = f'{params["physio_dir"]}/{subj}_task-rest_run-0{scan}_et.txt'
 
     return f_str
+
+
+def get_fp_base(fp):
+    # get nifti file path without extenstion
+    fp_split = os.path.splitext(fp)
+    if fp_split[1] == '.gz':
+        fp_base = os.path.splitext(fp_split[0])[0]
+    else:
+        fp_base = fp_split[0]
+    return fp_base
 
 
 def load_subject_list(subject_list):

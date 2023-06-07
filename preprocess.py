@@ -8,12 +8,19 @@ import os
 import pandas as pd
 import shutil
 
-from nipype.interfaces import fsl
-from nipype.interfaces.utility import Function
+
 from itertools import repeat
 from multiprocessing import Pool
 from scipy.io import loadmat
 from scipy.stats import zscore
+from utils.fsl_utils import (
+    bet, concat_transform, coregister,
+    fast, flirt, fnirt, mcflirt,
+    resample_func, robustfov,
+    reorient, slicetime, smooth,
+    trim_vol, wm_thres, warp_func
+ )
+from utils.load_utils import get_fp_base
 from utils.load_write import convert_2d, convert_4d
 from utils.physio_utils import (
     extract_ecg_signals, extract_eeg_signals,
@@ -22,15 +29,11 @@ from utils.physio_utils import (
 )
 from utils.signal_utils import butterworth_filter, clip_spikes
 
-# Ensure output is .nii.gz
-fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
-
 # Dilated mask that includes sinuses slightly outside gray matter tissue
 mask="masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz"
 
 # path to the analysis parameter .json file - contains dataset tr
 params_fp='analysis_params.json'
-
 
 # datasets
 datasets = ['chang', 'chang_bh', 'chang_cue', 
@@ -39,16 +42,20 @@ datasets = ['chang', 'chang_bh', 'chang_cue',
 
 # eeg channel selections for chang and natview datasets
 chang_eeg_chan = ['P3', 'P4', 'Pz', 'O1', 'O2', 'Oz']
-natview_eeg_chan = []
+natview_eeg_chan = ['P3', 'P4', 'P7', 'P8', 'Pz', 'POz',
+                    'P1', 'P2', 'PO3', 'PO4', 'P5', 'P6',
+                    'PO7', 'PO8', 'O1', 'O2', 'Oz']
 
 
-def anat_proc(fp, subj, output_dict):
+def anat_proc(fp, subj, output_dict, crop):
     fp = fp.format(subj)
     fp_base = get_fp_base(fp)
     # reorient structural to standard (just in case)
     fp_in = f"{output_dict['anat']['raw']}/{fp}"
     fp_reorient = f"{output_dict['anat']['reorient']}/{fp}"
     reorient(fp_in, fp_reorient)
+    if crop:
+        robustfov(fp_reorient, fp_reorient)
     # brain extraction
     fp_bet = f"{output_dict['anat']['bet']}/{fp}"
     bet(fp_reorient, fp_bet)
@@ -93,41 +100,6 @@ def bandpass_filter(fp, fp_out, tr, mask, cut_low=0.01, cut_high=0.1):
     img_out = nb.Nifti1Image(data_filt_4d, img.affine,
                              img.header)
     img_out.to_filename(fp_out)
-
-
-def bet(fp, fp_out):
-    # BET - Skullstrip anatomical Image
-    bet_anat = fsl.BET(frac=0.25, robust=True, mask=True)
-    bet_anat.inputs.in_file = fp
-    bet_anat.inputs.out_file = fp_out
-    bet_anat_res = bet_anat.run()
-
-
-def concat_transform(fp_func2struct, fp_flirt, fp_out):
-    # Concatenate affine transform matrices (func2struct & struct2MNI)
-    convertxfm = fsl.ConvertXFM(concat_xfm=True)
-    convertxfm.inputs.in_file = fp_func2struct
-    convertxfm.inputs.in_file2=fp_flirt
-    convertxfm.inputs.out_file=fp_out
-    convertxfm_res = convertxfm.run()
-
-
-def coregister(fp_mean, fp_reorient, fp_bet, fp_wm, fp_out):
-    fp_out_base = get_fp_base(fp_out)
-    # Coregister functional with T1w
-    epireg = fsl.EpiReg()
-    epireg.inputs.epi = fp_mean
-    epireg.inputs.t1_head=fp_reorient
-    epireg.inputs.t1_brain=fp_bet
-    # epireg expects the wmseg output as a suffix to the epi image (weird)
-    # rename for now
-    wmseg = f'{fp_out_base}_fast_wmseg.nii.gz'
-    shutil.copyfile(fp_wm, wmseg)
-    epireg.inputs.wmseg = wmseg
-    epireg.inputs.out_base = fp_out_base
-    epireg_res = epireg.run()
-    fp_func2struct = epireg_res.outputs.epi2str_mat
-    return fp_func2struct
 
 
 def create_directories(dataset, p_type, eeg, slicetime=None, trim=None):
@@ -178,6 +150,25 @@ def create_directories(dataset, p_type, eeg, slicetime=None, trim=None):
     return output_dict
 
 
+def eeglab_natview_preprocess(fp, output_dir):
+    """
+    load and preprocess raw natview EEG data using EEGLAB
+    need to use the system command to run matlab script in 'utils' folder
+    ensure that matlab is callable from the command line
+    the eeg/raw directory for natview is added to path so just need to 
+    supply filename to function. Handling file paths is a mess w/ matlab
+    from the command line - couple hacks to make things work.
+    """
+    # import MATLAB Engine API for Python
+    import matlab.engine
+    import io
+    # start matlab to python engine and add path to 'eeglab_preprocess.m'
+    eng = matlab.engine.start_matlab()
+    eng.addpath('utils', nargout=0)
+    eng.feval('eeglab_preprocess', fp, output_dir, nargout=0, stdout=io.StringIO())
+    eng.quit()
+
+
 def extract_physio(ts, phys_label, sf):
     # extract features from physiological signals using Neurokit
     # extraction functions return pandas dataframe
@@ -198,51 +189,8 @@ def extract_physio(ts, phys_label, sf):
     return phys_ts
 
 
-def fast(fp, fp_out):
-    # FAST - Image Segmentation
-    fast = fsl.FAST()
-    fast.inputs.in_files = fp
-    fast.inputs.out_basename = fp_out
-    # Nipype FAST issue with writing out tissue_class_map - Ignore
-    # https://github.com/nipy/nipype/issues/3311
-    try: 
-        fast_res = fast.run()
-    except FileNotFoundError:
-        fast_out = fp_out
-    fp_out_base = get_fp_base(fp_out)
-    fp_out_wm = f'{fp_out_base}_pve_2'
-    return fp_out_wm
-
-
-def flirt(fp, fp_out, fp_out_mat):
-    # FLIRT affine registration to MNI template
-    flirt = fsl.FLIRT()
-    flirt.inputs.in_file = fp
-    flirt.inputs.reference = f'{os.environ["FSLDIR"]}/data/standard/MNI152_T1_2mm_brain.nii.gz'
-    flirt.inputs.out_file = fp_out
-    flirt.out_matrix_file = fp_out_mat
-    flirt_res = flirt.run()
-    # Flirt saves output matrix in base directory (seems to be an issue related to the FAST issue above), 
-    # move to results directory
-    os.rename(flirt_res.outputs.out_matrix_file, fp_out_mat)
-
-
-def fnirt(fp, fp_affine, fp_out, fp_out_coef):
-    # FNIRT non-linear registration
-    fnirt = fsl.FNIRT()
-    fnirt.inputs.in_file = fp
-    fnirt.inputs.ref_file = f'{os.environ["FSLDIR"]}/data/standard/MNI152_T1_2mm.nii.gz'
-    fnirt.inputs.affine_file = fp_affine
-    fnirt.inputs.config_file='T1_2_MNI152_2mm'
-    fnirt.inputs.warped_file=fp_out
-    fnirt.inputs.fieldcoeff_file = fp_out_coef
-    fp_out_base = get_fp_base(fp_out)
-    fnirt.inputs.log_file = f'{fp_out_base}_log.txt'
-    fnirt_res = fnirt.run()
-
-
 def func_full_proc(fp, subj, scan, anat_out_dict, output_dict, tr,
-                   slicetime=None, trim=None):
+                   slice_timing=None, trim=None):
     # full preprocessing pipeline starting with raw functional
     fp = fp.format(subj, scan)
     fp_base = get_fp_base(fp)
@@ -258,7 +206,7 @@ def func_full_proc(fp, subj, scan, anat_out_dict, output_dict, tr,
     # if specified, slicetime correct
     if slicetime:
         fp_slicetime = f"{output_dict['func']['slicetime']}/{fp}"
-        slicetime(fp_in, fp_slicetime, slicetime)
+        slicetime(fp_in, fp_slicetime, slice_timing, tr)
         fp_in = fp_slicetime
     # apply mcflirt motion correction
     fp_mcflirt = f"{output_dict['func']['mcflirt']}/{fp}"
@@ -270,10 +218,9 @@ def func_full_proc(fp, subj, scan, anat_out_dict, output_dict, tr,
     )
     # apply warp to get functional to MNI
     fp_warp = f"{output_dict['func']['standard']}/{fp}"
-    warp_func(fp_mcflirt, fp_func2struct, anat_out['fnirt_coef'], fp_warp)
+    warp_func(fp_mcflirt, fp_func2struct, anat_out['fnirt_coef'], fp_warp, mask)
     # apply func minimal preprocessing pipeline
-    func_n = func_minimal_proc(fp, subj, scan, output_dict, tr, resample=False)
-    return func_n
+    func_minimal_proc(fp, subj, scan, output_dict, tr, resample=False)
 
 
 def func_minimal_proc(fp, subj, scan, output_dict, tr, resample=True):
@@ -285,7 +232,7 @@ def func_minimal_proc(fp, subj, scan, output_dict, tr, resample=True):
         # resample functional to 3mm MNI space
         fp_in = f"{output_dict['func']['raw']}/{fp}"
         fp_resample = f"{output_dict['func']['resample']}/{fp}"
-        resample_func(fp_in, fp_resample)
+        resample_func(fp_in, fp_resample, mask)
         fp_in = fp_resample
     else:
         fp_in = f"{output_dict['func']['standard']}/{fp}"
@@ -298,8 +245,6 @@ def func_minimal_proc(fp, subj, scan, output_dict, tr, resample=True):
     mask_bin = nb.load(mask).get_fdata() > 0
     fp_bandpass = f"{output_dict['func']['bandpass']}/{fp}"
     bandpass_filter(fp_smooth, fp_bandpass, tr, mask_bin)
-    # get number of time points from final functional
-    func_n = nb.load(fp_bandpass).shape[-1]
 
 
 def get_fp(dataset):
@@ -336,12 +281,13 @@ def get_fp(dataset):
           'out': '{0}_{1}_physio'
         }
     elif dataset == 'natview':
-        func='sub-{0}_ses-0{1}_func_mc.nii.gz'
-        anat = None
+        func='sub-{0}_ses-0{1}_task-rest_bold.nii.gz'
+        anat = 'sub-{0}_ses-01_T1w1_denoise.nii.gz'
         physio = {
             'eeg': 'sub-{0}_ses-0{1}_task-rest_eeg.set',
             'eye': 'sub-{0}_ses-0{1}_task-rest_recording-eyetracking_physio.tsv.gz',
             'resp': 'sub-{0}_ses-0{1}_task-rest_recording-respiratory_physio.tsv.gz',
+            'ecg': 'sub-{0}_ses-0{1}_task-rest_ecg.set',
             'out': 'sub-{0}_ses-0{1}_task-rest_physio'
         }
     elif dataset == 'nki': 
@@ -366,16 +312,6 @@ def get_fp(dataset):
             'out': '{0}_task-rest_run-0{1}_physio'
         }
     return func, anat, physio
-
-
-def get_fp_base(fp):
-    # get nifti file path without extenstion
-    fp_split = os.path.splitext(fp)
-    if fp_split[1] == '.gz':
-        fp_base = os.path.splitext(fp_split[0])[0]
-    else:
-        fp_base = fp_split[0]
-    return fp_base
 
 
 def load_subject_list(dataset, subject_list_fp):
@@ -408,7 +344,7 @@ def load_subject_list(dataset, subject_list_fp):
     return subj, scan
 
 
-def load_eeg(fp, dataset, resample, trim):
+def load_proc_eeg(fp, dataset, resample, trim, eeglab_dir=None):
     # load eeg data and return MNE object
     if dataset in ['chang', 'chang_bh', 'chang_cue']:
         eeg_mat = loadmat(fp, squeeze_me=True)
@@ -424,8 +360,33 @@ def load_eeg(fp, dataset, resample, trim):
         eeg_mne.crop(tmin=trim)
         # select channels
         eeg_mne.pick(chang_eeg_chan)
+        return eeg_mne, sf
 
-    return eeg_mne
+    elif dataset == 'natview':
+        # Run EEGLAB Preprocessing script
+        eeglab_natview_preprocess(fp, eeglab_dir)
+        # load in preprocessed EEG and trim to align with functional
+        eeg_base = os.path.basename(fp)
+        eeg_in = f'{eeglab_dir}/{eeg_base}'
+        eeg_mat = loadmat(eeg_in, squeeze_me=True)
+        # 'R128' is the trigger label
+        trigger_indx = [e['latency'] for e in eeg_mat['urevent'] 
+                        if e['type'] == 'R128']
+        start_indx = int(round(trigger_indx[0])) # first trigger is the first TR
+        # we remove the last two triggers to align with functions
+        end_indx = int(round(trigger_indx[-3]))
+        eeg_data = eeg_mat['data'][:, start_indx:end_indx]
+        # Create MNE object
+        chan_labels = eeg_mat['chanlocs']['labels'].tolist()
+        sf = eeg_mat['srate']
+        info = mne.create_info(chan_labels, ch_types='eeg', sfreq=sf)
+        eeg_mne = mne.io.RawArray(eeg_data, info, verbose=False)
+        # select channels
+        eeg_mne.pick(natview_eeg_chan)
+        # package start and end indx for trimming ECG data that was 
+        # contained in EEG data and loaded later in pipeline
+        trim_indx = (start_indx, end_indx)
+        return eeg_mne, sf, trim_indx
 
 
 def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
@@ -443,13 +404,93 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
         # Pull physio data into dict
         ppg = physio_raw['OUT_p']['card_dat'].item()
         resp = physio_raw['OUT_p']['resp'].item()['wave'].item()
-        eeg = load_eeg(fp_eeg_in, dataset, resample, trim)
+        # Load EEG for chang datasets
+        eeg, sf_eeg = load_proc_eeg(fp_eeg_in, dataset, resample, trim)
         # write out eeg object
         fp_eeg_out = get_fp_base(fp_eeg)
         eeg.save(f"{output_dict['eeg']['proc']}/{fp_eeg_out}.raw.fif", overwrite=True)
         physio = {'ppg': ppg, 'resp': resp, 'eeg': eeg}
+        sf_dict = {'ppg': sf, 'resp': sf, 'eeg': sf_eeg}
+
+    elif dataset == 'hcp':
+        sf = 400 # hcp physio sampling frequency
+        fp_p = fp['physio'].format(subj, scan)
+        fp_p_in = f"{output_dict['physio']['raw']}/{fp_p}"
+        physio_raw = np.loadtxt(fp_p_in)
+        physio = {
+            'resp': physio_raw[:,1], 
+            'ppg': physio_raw[:,2]
+        }
+        sf_dict = {'resp': sf, 'ppg': sf}
+
+    elif dataset == 'natview':
+        # get file paths
+        fp_eye = fp['eye'].format(subj, scan)
+        fp_resp = fp['resp'].format(subj, scan)
+        fp_eeg = fp['eeg'].format(subj, scan)
+        fp_ecg = fp['ecg'].format(subj, scan)
+        fp_eye_in = f"{output_dict['physio']['raw']}/{fp_eye}"
+        fp_resp_in = f"{output_dict['physio']['raw']}/{fp_resp}"
+        fp_eeg_in = f"{output_dict['eeg']['raw']}/{fp_eeg}"
+        # ECG file doesn't exist yet, created in EEGLAB preprocessing
+        fp_ecg_in = f"{output_dict['eeg']['proc']}/{fp_ecg}"
+        # Load eye tracking file and json metadata
+        eye = pd.read_csv(fp_eye_in, compression='gzip', delimiter='\t', header=None)
+        eye_json = json.load(open(f'{get_fp_base(fp_eye_in)}.json', 'rb'))
+        eye.columns = eye_json['Columns']
+        sf_eye = eye_json['SamplingFrequency']
+        # eye signals trimming to align w/ functional
+        # create a indicator of start/end of task - and trim to start of task
+        eye['task_span'] = eye.Task_Start_End_Trigger.cumsum() 
+        eye_trim = eye.loc[eye.task_span >= 1].copy()
+        # Create a running sum of volume triggers.
+        """
+        Important Note: 
+        the eye recordings have 285 triggers (three short of the functional - 
+        the functional has 288 volumes). One trigger at the beginning is missing 
+        because it occurs 50 milliseconds before the task start trigger, so we can assume 
+        that the start of the task is aligned with the first (missing) trigger (i.e. first 
+        volume of the functional). Thus, we can trim all signals before the start of the task 
+        trigger in the eye recordings. We trim all signals in the eye recordings after the 
+        last trigger (285) recorded. Because there are two (missing) fMRI triggers after the 
+        final trigger recorded in the eye recordings, we need to remove the last two volumes
+        from the fMRI and EEG recordings. 
+        """
+        eye_trim['trigger_sum'] = eye_trim.fMRI_Volume_Trigger.cumsum()
+        last_indx = eye_trim.loc[eye_trim.trigger_sum == 285].index[0]+1
+        pupil_trim = eye_trim.loc[:last_indx]['Pupil_Area'].copy()
+        # Load respiratory data
+        """
+        Important Note:
+        We have little metadata on the respiratory belt signals. Still waiting to hear
+        back from NATVIEW team on alignment with the rest of the recordings. For now,
+        assume that is already aligned to the start and end of the functional scan. Thus,
+        we should shave off 4.2 sec (2 TRs) to match the trimming off the end of the functional
+        scan by 2TRs. 
+        """
+        resp = pd.read_csv(fp_resp_in, header=None, delimiter='\t', compression='gzip')
+        resp_json = json.load(open(f'{get_fp_base(fp_resp_in)}.json', 'rb'))
+        resp.columns = resp_json['Columns']
+        sf_resp = resp_json['SamplingFrequency']
+        # Trim off 4.2 sec (2 TRs) to align with functional (TR = 2.1)
+        indx = np.floor((2*2.1)/(1/sf_resp)).astype(int)
+        resp_trim = resp.iloc[:-indx]['respiratory']
+        sf_resp = resp_json['SamplingFrequency']
+        # Load eeg data and preprocess with EEGLAB preprocessing script (need MATLAB)
+        eeg, sf_eeg, trim_indx = load_proc_eeg(fp_eeg_in, dataset, resample, trim, 
+                                               output_dict['eeg']['proc'])
+        # write out eeg object
+        fp_eeg_out = get_fp_base(fp_eeg)
+        eeg.save(f"{output_dict['eeg']['proc']}/{fp_eeg_out}.raw.fif", overwrite=True)
+        # load in ECG data
+        ecg = loadmat(fp_ecg_in, squeeze_me=True)
+        ecg_trim = ecg['data'][trim_indx[0]:trim_indx[1]][:, np.newaxis]
+        physio = {'pupil': pupil_trim, 'resp': resp_trim, 'ecg': ecg_trim, 'eeg': eeg}
+        sf_dict = {'pupil': sf_eye, 'resp': sf_resp, 'ecg': sf_eeg, 'eeg': sf_eeg}
+        return physio, sf_dict
 
     elif (dataset == 'nki') | (dataset == 'spreng'):
+        # get file path and load
         fp_p = fp['physio'].format(subj, scan)
         fp_p_in = f"{output_dict['physio']['raw']}/{fp_p}"
         physio_df = pd.read_csv(fp_p_in, compression='gzip', sep='\t', header=None)
@@ -467,18 +508,11 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
             'ppg': physio_df['cardiac'].values, 
             'resp': physio_df['respiratory'].values
         }
+        sf = physio_json["SamplingFrequency"]
+        sf_dict = {'ppg': sf, 'resp': sf}
         if dataset == 'nki':
             physio['gsr'] = physio_df['gsr'].values
-        sf = physio_json["SamplingFrequency"]
-    elif dataset == 'hcp':
-        sf = 400 # hcp physio sampling frequency
-        fp_p = fp['physio'].format(subj, scan)
-        fp_p_in = f"{output_dict['physio']['raw']}/{fp_p}"
-        physio_raw = np.loadtxt(fp_p_in)
-        physio = {
-            'resp': physio_raw[:,1], 
-            'ppg': physio_raw[:,2]
-        }
+            sf_dict['gsr'] = sf
 
     elif dataset == 'yale':
         sf = 1 # already resampled to functional scan TR
@@ -488,40 +522,30 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
         physio = {
             'pupil': physio_df.iloc[:,0].values
         }
+        sf_dict = {'pupil': sf}
 
     # loop through physio signals and trim/resample (if specified)
     for p in physio.keys():
         if p != 'eeg':
             # some dataset physio signals need to be trimmed to align w/ functional
             if trim is not None:
-                trim_n = int(sf*trim)
+                sf_trim = sf_dict[p]
+                trim_n = int(sf_trim*trim)
                 physio[p] = physio[p][trim_n:]
             # to ease computational burden, some high-frequency 
             # physio signals are downsampled before pre-processing
             if resample is not None:
+                sf_resamp = sf_dict[p]
                 physio[p] = nk.signal_resample(
                                physio[p], 
-                               sampling_rate=sf, 
+                               sampling_rate=sf_resamp, 
                                desired_sampling_rate=resample, 
                                method='FFT'
                             )
-    if resample is not None:
-        # set resample freq as new freq (sf)
-        sf = resample
-    return physio, sf
-
-
-def mcflirt(fp, fp_out):
-    # McFLIRT Motion Correction
-    fp_out_base = get_fp_base(fp_out)
-    func_file_meanvol = f'{fp_out_base}_mean.nii.gz'
-    mcflirt = fsl.MCFLIRT(mean_vol=True, save_plots=True)
-    mcflirt.inputs.in_file = fp
-    mcflirt.inputs.out_file = fp_out
-    mcflirt_res = mcflirt.run()
-    # weird renaming of mean vol, rename
-    os.rename(mcflirt_res.outputs.mean_img, func_file_meanvol)
-    return func_file_meanvol
+                # set resample freq as new freq (sf)
+                sf_dict[p] = resample                
+        
+    return physio, sf_dict
 
 
 def physio_proc(fp, subj, scan, dataset, physio_labels, 
@@ -530,8 +554,8 @@ def physio_proc(fp, subj, scan, dataset, physio_labels,
     # preprocess physio signals - save out unfiltered and 
     # bandpass filtered preprocessed signals
     # load physio signals
-    physio, sf = load_physio(fp, subj, scan, dataset,
-                             output_dict, resample, trim)
+    physio, sf_dict = load_physio(fp, subj, scan, dataset, output_dict, 
+                                  resample, trim)
     # get n of time points of functional scan for aligning w/ physio
     # need to load in subj functional nifti header
     fp_func_in = f"{output_dict['func']['bandpass']}/{fp_func.format(subj, scan)}"
@@ -540,12 +564,12 @@ def physio_proc(fp, subj, scan, dataset, physio_labels,
     physio_out = []
     physio_out_filt = []
     for p in physio_labels:
-        p_df = extract_physio(physio[p], p, sf)
+        p_df = extract_physio(physio[p], p, sf_dict[p])
         # clip potential spikes - abs(z) >= 5
         p_df = p_df.apply(clip_spikes, axis=0)
         # Bandpass filter signals (0.01-0.1Hz)
         p_df_filt = p_df.apply(
-           butterworth_filter, lowcut=0.01, highcut=0.1, fs=sf, 
+           butterworth_filter, lowcut=0.01, highcut=0.1, fs=sf_dict[p], 
            filter_type='bandpass', axis=0
         )
         # whether to resample to functional - some physio signals are already 
@@ -587,7 +611,8 @@ def preprocess(dataset, n_cores):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'minimal', # minimal or full preprocessing pipeline
-            'slicetime': None, # filepath to slice order file
+            'robustfov': False, # whether to crop anatomical image
+            'slicetime': None, # filepath to slice timing file
             'trim': None, # number of volumes to trim from begin of functional scan
             'n_cores': n_cores, 
             'tr': params_dataset['tr'], # functional TR
@@ -601,6 +626,7 @@ def preprocess(dataset, n_cores):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'minimal',
+            'robustfov': False,
             'slicetime': None, 
             'trim': None,
             'n_cores': n_cores,
@@ -613,12 +639,13 @@ def preprocess(dataset, n_cores):
     elif dataset == 'natview':
         params_dataset = params_json[dataset]
         params = {
-            'p_type': 'minimal',
-            'slicetime': None, 
-            'trim': None,
+            'p_type': 'full',
+            'robustfov': True,
+            'slicetime': 'data/dataset_natview/slicetiming_natview.txt', 
+            'trim': -2,
             'n_cores': n_cores,
             'tr': params_dataset['tr'],
-            'signals': ['resp', 'pupil', 'eeg'],
+            'signals': ['resp', 'pupil', 'ecg', 'eeg'],
             'resample_physio': None,
             'trim_physio': None,
             'resample_to_func': True 
@@ -627,6 +654,7 @@ def preprocess(dataset, n_cores):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
+            'robustfov': False,
             'slicetime': None, 
             'trim': None,
             'n_cores': n_cores,
@@ -640,6 +668,7 @@ def preprocess(dataset, n_cores):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'minimal',
+            'robustfov': False,
             'slicetime': None, 
             'trim': None,
             'n_cores': n_cores,
@@ -653,6 +682,7 @@ def preprocess(dataset, n_cores):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
+            'robustfov': False,
             'slicetime': None, 
             'trim': 10,
             'n_cores': n_cores,
@@ -683,107 +713,45 @@ def preprocess_map(subj, scan, params, output_dict, dataset):
     # apply preprocessing pipeline to each subject in parallel
     pool = Pool(processes=params['n_cores'])
     # Full preprocessing pipeline - starting from raw
-    if params['p_type'] == 'full':
-        # anatomical pipeline
-        # get unique subj ids while preserving order
-        subj_unq = list(dict.fromkeys(subj))
-        # Apply anatomical pipeline to structural scans (possibly in parallel)
-        anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict))
-        anat_out = pool.starmap(anat_proc, anat_iter)
-        # convert anat output to dict with subj id as keys
-        anat_out_dict = {a[0]: a[1] for a in anat_out}
-        # functional pipeline
-        func_iter = zip(
-            repeat(params['func']), subj, scan, repeat(anat_out_dict), 
-            repeat(output_dict), repeat(params['tr']), 
-            repeat(params['slicetime']), repeat(params['trim'])
-        )
-        func_n = pool.starmap(func_full_proc, func_iter)
+    # if params['p_type'] == 'full':
+    #     # anatomical pipeline
+    #     # get unique subj ids while preserving order
+    #     subj_unq = list(dict.fromkeys(subj))
+    #     # Apply anatomical pipeline to structural scans (possibly in parallel)
+    #     anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict), 
+    #                     repeat(params['robustfov']))
+    #     anat_out = pool.starmap(anat_proc, anat_iter)
+    #     # # convert anat output to dict with subj id as keys
+    #     anat_out_dict = {a[0]: a[1] for a in anat_out}
+    #     # functional pipeline
+    #     func_iter = zip(
+    #         repeat(params['func']), subj, scan, repeat(anat_out_dict), 
+    #         repeat(output_dict), repeat(params['tr']), 
+    #         repeat(params['slicetime']), repeat(params['trim'])
+    #     )
+    #     pool.starmap(func_full_proc, func_iter)
 
-    # Minimal preprocessing pipeline - starting from preprocessed
-    elif params['p_type'] == 'minimal':
-        func_iter = zip(repeat(params['func']), subj, scan, repeat(output_dict), 
-                        repeat(params['tr']))
-        pool.starmap(func_minimal_proc, func_iter)
+    # # Minimal preprocessing pipeline - starting from preprocessed
+    # elif params['p_type'] == 'minimal':
+    #     func_iter = zip(repeat(params['func']), subj, scan, repeat(output_dict),
+    #                     repeat(params['tr']))
+    #     pool.starmap(func_minimal_proc, func_iter)
 
     # Physio preprocessing
-    physio_iter = zip(repeat(params['physio']), subj, scan, 
-                      repeat(dataset), repeat(params['signals']),
-                      repeat(params['func']), repeat(output_dict), 
-                      repeat(params['resample_physio']),
-                      repeat(params['trim_physio']),
-                      repeat(params['resample_to_func'])
-                      )
-
-
-def resample_func(fp, fp_out):
-    # FLIRT resample functional scan to 3mm MNI
-    flirt = fsl.FLIRT()
-    flirt.inputs.in_file = fp
-    flirt.inputs.reference = mask
-    flirt.inputs.out_file = fp_out
-    flirt.inputs.apply_xfm = True
-    flirt.inputs.uses_qform = True
-    flirt_res = flirt.run()
-    # Flirt saves output matrix in base directory (seems to be an issue related to the FAST issue above), 
-    # move to results directory
-    os.remove(flirt_res.outputs.out_matrix_file)
-
-
-def reorient(fp, fp_out):
-    # Reorient 2 standard
-    reorient = fsl.utils.Reorient2Std()
-    reorient.inputs.in_file = fp
-    reorient.inputs.out_file = fp_out
-    reorient_res = reorient.run()
-
-
-def slicetime(fp, fp_out, st_fp):
-    # # Slice time correction
-    slicetimer = fsl.SliceTimer(custom_timings=st_fp, 
-                                time_repetition=tr) 
-    slicetimer.inputs.in_file = fp
-    slicetimer.inputs.out_file = fp_out
-    slicetimer_res = slicetimer.run()
-
-
-def smooth(fp, fp_out, fwhm=5.0):
-    # 3mm FWHM isotropic smoothing
-    smooth = fsl.Smooth(fwhm=fwhm)
-    smooth.inputs.in_file = fp
-    smooth.inputs.smoothed_file=fp_out
-    smooth_res = smooth.run()
-
-
-def trim_vol(fp, fp_out, n_trim):
-    # Trim first N volumes
-    trim = fsl.ExtractROI(t_min=n_trim, t_size=-1)
-    trim.inputs.in_file = fp
-    trim.inputs.roi_file = fp_out
-    trim_res = trim.run()
-
-
-def wm_thres(fp, fp_out):
-    # Threshold white matter partial volume
-    wm_thres = fsl.Threshold(thresh=0.5, args='-bin')
-    wm_thres.inputs.in_file = fp
-    wm_thres.inputs.out_file = fp_out
-    wm_thres_res = wm_thres.run()
-
-
-def warp_func(fp, fp_affine, fp_coef, fp_out):
-    # Warp functional to MNI space
-    applywarp = fsl.ApplyWarp()
-    applywarp.inputs.in_file = fp
-    applywarp.inputs.ref_file = mask
-    applywarp.inputs.premat=fp_affine
-    applywarp.inputs.field_file=fp_coef
-    applywarp.inputs.out_file=fp_out
-    applywarp_res = applywarp.run()
+    physio_iter = zip(
+      repeat(params['physio']), subj, scan, repeat(dataset), 
+      repeat(params['signals']), repeat(params['func']), 
+      repeat(output_dict), repeat(params['resample_physio']),
+      repeat(params['trim_physio']), repeat(params['resample_to_func'])
+    )
+    # pool.starmap(physio_proc, physio_iter)
+    physio_proc(params['physio'], subj[0], scan[0], dataset, params['signals'], 
+                params['func'], output_dict, params['resample_physio'], 
+                params['trim_physio'], params['resample_to_func'])
 
 
 if __name__ == '__main__':
-    """Run main analysis"""
+    """Run preprocessing"""
     parser = argparse.ArgumentParser(description='Preprocess datasets')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to preprocess - '

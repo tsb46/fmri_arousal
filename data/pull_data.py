@@ -140,10 +140,7 @@ def download_natview(subjects):
 
 	# Set up templates
 	anat_template = 'anat/T1w1_denoise.nii.gz'
-	anat2standard_template='anat/reg/highres2standard.mat'
-	anatwarp_template='anat/reg/highres2standard_warp.nii.gz'
-	func2highres_template='func/sub-{0}_ses-{1}_task-rest_bold/func_reg/example_func2highres.mat'
-	func_template = 'func/sub-{0}_ses-{1}_task-rest_bold/func_minimal/func_mc.nii.gz'
+	func_template = 'func/sub-{0}_ses-{1}_task-rest_bold.nii.gz'
 	resp_json_template = 'func/sub-{0}_ses-{1}_task-rest_recording-respiratory_physio.json'
 	resp_template = 'func/sub-{0}_ses-{1}_task-rest_recording-respiratory_physio.tsv.gz'
 	eye_template = 'eeg/sub-{0}_ses-{1}_task-rest_recording-eyetracking_physio.tsv.gz'
@@ -153,8 +150,8 @@ def download_natview(subjects):
 	eeg_json_template = 'eeg/sub-{0}_ses-{1}_task-rest_eeg.json'
 
 
-	anat_templates = [anat_template, anat2standard_template, anatwarp_template]
-	func_templates = [func2highres_template, func_template]
+	anat_templates = [anat_template]
+	func_templates = [func_template]
 	resp_templates = [resp_json_template, resp_template]
 	eye_templates = [eye_template, eye_json_template]
 	eeg_templates = [eeg_template, eeg_channel_template, eeg_json_template]
@@ -179,16 +176,8 @@ def download_natview(subjects):
 	    # Pull functional files (and coregistration affine)
 	    for template in func_templates:
 	        temp_base = os.path.basename(template.format(subj, ses_str))
-	        func_fp = f'{s3_prefix_proc}/sub-{subj}/ses-{ses_str}/{template.format(subj, ses_str)}'
-	        func_out = f'dataset_natview/func/raw/sub-{subj}_ses-{ses_str}_{temp_base}'
-	        with open(func_out, 'wb') as f:
-	            s3_client.download_fileobj(s3_bucket_name, func_fp, f)
-
-	    # Pull functional files (and coregistration affine)
-	    for template in func_templates:
-	        temp_base = os.path.basename(template.format(subj, ses_str))
-	        func_fp = f'{s3_prefix_proc}/sub-{subj}/ses-{ses_str}/{template.format(subj, ses_str)}'
-	        func_out = f'dataset_natview/func/raw/sub-{subj}_ses-{ses_str}_{temp_base}'
+	        func_fp = f'{s3_prefix_raw}/sub-{subj}/ses-{ses_str}/{template.format(subj, ses_str)}'
+	        func_out = f'dataset_natview/func/raw/{temp_base}'
 	        with open(func_out, 'wb') as f:
 	            s3_client.download_fileobj(s3_bucket_name, func_fp, f)
 
@@ -211,7 +200,7 @@ def download_natview(subjects):
 	    # Pull eeg files
 	    for template in eeg_templates:
 	        temp_base = os.path.basename(template.format(subj, ses_str))
-	        eeg_fp = f'{s3_prefix_proc}/sub-{subj}/ses-{ses_str}/{template.format(subj, ses_str)}'
+	        eeg_fp = f'{s3_prefix_raw}/sub-{subj}/ses-{ses_str}/{template.format(subj, ses_str)}'
 	        eeg_out = f'dataset_natview/eeg/raw/{temp_base}'
 	        with open(eeg_out, 'wb') as f:
 	            s3_client.download_fileobj(s3_bucket_name, eeg_fp, f)

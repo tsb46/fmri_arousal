@@ -139,14 +139,11 @@ data/dataset_spreng/*/
 data/dataset_yale/*/
 data/dataset_natview/*/
 
+# .asv files output from matlab
+*.asv
 
-
-
-external/*
-
-
-
-
+# external and results folders
+/external
 /results
 
 # Rstudio history
