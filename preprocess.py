@@ -713,29 +713,29 @@ def preprocess_map(subj, scan, params, output_dict, dataset):
     # apply preprocessing pipeline to each subject in parallel
     pool = Pool(processes=params['n_cores'])
     # Full preprocessing pipeline - starting from raw
-    # if params['p_type'] == 'full':
-    #     # anatomical pipeline
-    #     # get unique subj ids while preserving order
-    #     subj_unq = list(dict.fromkeys(subj))
-    #     # Apply anatomical pipeline to structural scans (possibly in parallel)
-    #     anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict), 
-    #                     repeat(params['robustfov']))
-    #     anat_out = pool.starmap(anat_proc, anat_iter)
-    #     # # convert anat output to dict with subj id as keys
-    #     anat_out_dict = {a[0]: a[1] for a in anat_out}
-    #     # functional pipeline
-    #     func_iter = zip(
-    #         repeat(params['func']), subj, scan, repeat(anat_out_dict), 
-    #         repeat(output_dict), repeat(params['tr']), 
-    #         repeat(params['slicetime']), repeat(params['trim'])
-    #     )
-    #     pool.starmap(func_full_proc, func_iter)
+     if params['p_type'] == 'full':
+         # anatomical pipeline
+         # get unique subj ids while preserving order
+         subj_unq = list(dict.fromkeys(subj))
+         # Apply anatomical pipeline to structural scans (possibly in parallel)
+         anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict),
+                         repeat(params['robustfov']))
+         anat_out = pool.starmap(anat_proc, anat_iter)
+         # # convert anat output to dict with subj id as keys
+         anat_out_dict = {a[0]: a[1] for a in anat_out}
+         # functional pipeline
+         func_iter = zip(
+             repeat(params['func']), subj, scan, repeat(anat_out_dict),
+             repeat(output_dict), repeat(params['tr']),
+             repeat(params['slicetime']), repeat(params['trim'])
+         )
+         pool.starmap(func_full_proc, func_iter)
 
-    # # Minimal preprocessing pipeline - starting from preprocessed
-    # elif params['p_type'] == 'minimal':
-    #     func_iter = zip(repeat(params['func']), subj, scan, repeat(output_dict),
-    #                     repeat(params['tr']))
-    #     pool.starmap(func_minimal_proc, func_iter)
+     # Minimal preprocessing pipeline - starting from preprocessed
+     elif params['p_type'] == 'minimal':
+         func_iter = zip(repeat(params['func']), subj, scan, repeat(output_dict),
+                         repeat(params['tr']))
+         pool.starmap(func_minimal_proc, func_iter)
 
     # Physio preprocessing
     physio_iter = zip(
