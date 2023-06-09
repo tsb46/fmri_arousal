@@ -7,6 +7,7 @@ import numpy as np
 import os
 import pandas as pd
 import shutil
+import warnings
 
 
 from itertools import repeat
@@ -344,7 +345,7 @@ def load_subject_list(dataset, subject_list_fp):
     return subj, scan
 
 
-def load_proc_eeg(fp, dataset, resample, trim, eeglab_dir=None):
+def load_proc_eeg(fp, dataset, resample, trim, no_eeglab, eeglab_dir=None):
     # load eeg data and return MNE object
     if dataset in ['chang', 'chang_bh', 'chang_cue']:
         eeg_mat = loadmat(fp, squeeze_me=True)
@@ -363,8 +364,9 @@ def load_proc_eeg(fp, dataset, resample, trim, eeglab_dir=None):
         return eeg_mne, sf
 
     elif dataset == 'natview':
-        # Run EEGLAB Preprocessing script
-        eeglab_natview_preprocess(fp, eeglab_dir)
+        if not no_eeglab:
+            # Run EEGLAB Preprocessing script
+            eeglab_natview_preprocess(fp, eeglab_dir)
         # load in preprocessed EEG and trim to align with functional
         eeg_base = os.path.basename(fp)
         eeg_in = f'{eeglab_dir}/{eeg_base}'
@@ -389,7 +391,7 @@ def load_proc_eeg(fp, dataset, resample, trim, eeglab_dir=None):
         return eeg_mne, sf, trim_indx
 
 
-def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
+def load_physio(fp, subj, scan, dataset, output_dict, resample, trim, no_eeglab):
     # load physiological signals for each dataset and return dictionary with 
     # physio labels as keys.
     # each dataset has unique file formats that must be accounted for    
@@ -405,7 +407,7 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
         ppg = physio_raw['OUT_p']['card_dat'].item()
         resp = physio_raw['OUT_p']['resp'].item()['wave'].item()
         # Load EEG for chang datasets
-        eeg, sf_eeg = load_proc_eeg(fp_eeg_in, dataset, resample, trim)
+        eeg, sf_eeg = load_proc_eeg(fp_eeg_in, dataset, resample, trim, no_eeglab)
         # write out eeg object
         fp_eeg_out = get_fp_base(fp_eeg)
         eeg.save(f"{output_dict['eeg']['proc']}/{fp_eeg_out}.raw.fif", overwrite=True)
@@ -465,8 +467,8 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
         We have little metadata on the respiratory belt signals. Still waiting to hear
         back from NATVIEW team on alignment with the rest of the recordings. For now,
         assume that is already aligned to the start and end of the functional scan. Thus,
-        we should shave off 4.2 sec (2 TRs) to match the trimming off the end of the functional
-        scan by 2TRs. 
+        we should shave off 4.2 sec (2 TRs) from the end to match the trimming off 
+        the end of the functional scan by 2TRs. 
         """
         resp = pd.read_csv(fp_resp_in, header=None, delimiter='\t', compression='gzip')
         resp_json = json.load(open(f'{get_fp_base(fp_resp_in)}.json', 'rb'))
@@ -476,17 +478,41 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
         indx = np.floor((2*2.1)/(1/sf_resp)).astype(int)
         resp_trim = resp.iloc[:-indx]['respiratory']
         sf_resp = resp_json['SamplingFrequency']
-        # Load eeg data and preprocess with EEGLAB preprocessing script (need MATLAB)
-        eeg, sf_eeg, trim_indx = load_proc_eeg(fp_eeg_in, dataset, resample, trim, 
-                                               output_dict['eeg']['proc'])
-        # write out eeg object
-        fp_eeg_out = get_fp_base(fp_eeg)
-        eeg.save(f"{output_dict['eeg']['proc']}/{fp_eeg_out}.raw.fif", overwrite=True)
-        # load in ECG data
-        ecg = loadmat(fp_ecg_in, squeeze_me=True)
-        ecg_trim = ecg['data'][trim_indx[0]:trim_indx[1]][:, np.newaxis]
-        physio = {'pupil': pupil_trim, 'resp': resp_trim, 'ecg': ecg_trim, 'eeg': eeg}
-        sf_dict = {'pupil': sf_eye, 'resp': sf_resp, 'ecg': sf_eeg, 'eeg': sf_eeg}
+        # package up physio signals and their sampling frequency
+        physio = {'pupil': pupil_trim, 'resp': resp_trim}
+        sf_dict = {'pupil': sf_eye, 'resp': sf_resp}
+        # If the user specifies no_eeglab, do not run eeglab matlab script.
+        if no_eeglab:
+            # check whether the eeglab preprocessing script has been run
+            # separately without matlabengine, if so move forward with
+            # further eeg and ecg preprocessing
+            fp_eeg_in_proc = f"{output_dict['eeg']['proc']}/{fp_eeg}"
+            if os.path.isfile(fp_eeg_in_proc):
+                eeg_p_check = True
+            else:
+                eeg_p_check = False
+                warnings.warn("""
+                    EEGLAB preprocessing was chosen not to run, and a preprocessed EEG 
+                    file doesn't look to exist. No EEG and ECG signals will be extracted.
+                """)
+        else:
+            eeg_p_check = True
+        # if preprocessed eeg object exists, move forward with further preprocessing
+        if eeg_p_check:
+            # Load eeg data and, if specified, preprocess with EEGLAB (need MATLAB)
+            eeg, sf_eeg, trim_indx = load_proc_eeg(
+                fp_eeg_in, dataset, resample, trim, no_eeglab, output_dict['eeg']['proc']
+            )
+            # write out eeg object
+            fp_eeg_out = get_fp_base(fp_eeg)
+            eeg.save(f"{output_dict['eeg']['proc']}/{fp_eeg_out}.raw.fif", overwrite=True)
+            # load in ECG data
+            ecg = loadmat(fp_ecg_in, squeeze_me=True)
+            ecg_trim = ecg['data'][trim_indx[0]:trim_indx[1]][:, np.newaxis]
+            # insert into dictionary
+            physio['ecg'] = ecg_trim; physio['eeg'] = eeg;
+            sf_dict['ecg'] = sf_eeg; sf_dict['eeg'] = sf_eeg 
+ 
         return physio, sf_dict
 
     elif (dataset == 'nki') | (dataset == 'spreng'):
@@ -548,14 +574,14 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim):
     return physio, sf_dict
 
 
-def physio_proc(fp, subj, scan, dataset, physio_labels, 
-                fp_func, output_dict, resample, trim, 
-                resample_to_func):
+def physio_proc(fp, subj, scan, dataset, fp_func, 
+                output_dict, resample, trim, 
+                resample_to_func, no_eeglab):
     # preprocess physio signals - save out unfiltered and 
     # bandpass filtered preprocessed signals
     # load physio signals
     physio, sf_dict = load_physio(fp, subj, scan, dataset, output_dict, 
-                                  resample, trim)
+                                  resample, trim, no_eeglab)
     # get n of time points of functional scan for aligning w/ physio
     # need to load in subj functional nifti header
     fp_func_in = f"{output_dict['func']['bandpass']}/{fp_func.format(subj, scan)}"
@@ -563,7 +589,7 @@ def physio_proc(fp, subj, scan, dataset, physio_labels,
     # loop through physio signals and extract, clip, filter and resample
     physio_out = []
     physio_out_filt = []
-    for p in physio_labels:
+    for p in physio:
         p_df = extract_physio(physio[p], p, sf_dict[p])
         # clip potential spikes - abs(z) >= 5
         p_df = p_df.apply(clip_spikes, axis=0)
@@ -601,7 +627,7 @@ def physio_proc(fp, subj, scan, dataset, physio_labels,
         np.savetxt(f'{fp_out}_{col}_filt.txt', physio_out_filt[col].values)
 
 
-def preprocess(dataset, n_cores):
+def preprocess(dataset, n_cores, no_eeglab):
     # master function for preprocessing datasets
     print(f'preprocessing {dataset}')
     # load analysis_params.json to get dataset tr
@@ -615,8 +641,8 @@ def preprocess(dataset, n_cores):
             'slicetime': None, # filepath to slice timing file
             'trim': None, # number of volumes to trim from begin of functional scan
             'n_cores': n_cores, 
+            'eeg': True, # whether eeg is collected in this dataset
             'tr': params_dataset['tr'], # functional TR
-            'signals': ['resp', 'ppg', 'eeg'], # physio signals in dataset
             'resample_physio': 100, # resample frequency for physio,
             'trim_physio': 14.7, # time (in secs) to trim off front of physio signals,
             'resample_to_func': True # whether to resample physio to functional scan length
@@ -630,8 +656,8 @@ def preprocess(dataset, n_cores):
             'slicetime': None, 
             'trim': None,
             'n_cores': n_cores,
+            'eeg': False,
             'tr': params_dataset['tr'],
-            'signals': ['resp', 'ppg'],
             'resample_physio': None,
             'trim_physio': None,
             'resample_to_func': True 
@@ -644,8 +670,8 @@ def preprocess(dataset, n_cores):
             'slicetime': 'data/dataset_natview/slicetiming_natview.txt', 
             'trim': -2,
             'n_cores': n_cores,
+            'eeg': True,
             'tr': params_dataset['tr'],
-            'signals': ['resp', 'pupil', 'ecg', 'eeg'],
             'resample_physio': None,
             'trim_physio': None,
             'resample_to_func': True 
@@ -658,8 +684,8 @@ def preprocess(dataset, n_cores):
             'slicetime': None, 
             'trim': None,
             'n_cores': n_cores,
+            'eeg': False,
             'tr': params_dataset['tr'],
-            'signals': ['resp', 'ppg', 'gsr'],
             'resample_physio': None,
             'trim_physio': None,
             'resample_to_func': True 
@@ -672,8 +698,8 @@ def preprocess(dataset, n_cores):
             'slicetime': None, 
             'trim': None,
             'n_cores': n_cores,
+            'eeg': False,
             'tr': params_dataset['tr'],
-            'signals': ['resp', 'ppg'],
             'resample_physio': None,
             'trim_physio': 12,
             'resample_to_func': True
@@ -686,8 +712,8 @@ def preprocess(dataset, n_cores):
             'slicetime': None, 
             'trim': 10,
             'n_cores': n_cores,
+            'eeg': False,
             'tr': params_dataset['tr'],
-            'signals': ['pupil'],
             'resample_physio': None,
             'trim_physio': None,
             'resample_to_func': False
@@ -696,24 +722,20 @@ def preprocess(dataset, n_cores):
     # Pull subject and scan labels for each subject
     subj, scan = load_subject_list(dataset, params_dataset['subject_list'])
     # get output directories
-    if 'eeg' in params['signals']:
-        eeg = True
-    else:
-        eeg = False
-    output_dict = create_directories(dataset, params['p_type'], eeg)
+    output_dict = create_directories(dataset, params['p_type'], params['eeg'])
     # get filepaths to functional and anatomical scans
     params['func'], params['anat'], params['physio'] = get_fp(dataset)
     # apply preprocessing pipeline (possibly in parallel)
     preprocess_map(
-        subj, scan, params, output_dict, dataset
+        subj, scan, params, output_dict, dataset, no_eeglab
     )
 
 
-def preprocess_map(subj, scan, params, output_dict, dataset):
+def preprocess_map(subj, scan, params, output_dict, dataset, no_eeglab):
     # apply preprocessing pipeline to each subject in parallel
     pool = Pool(processes=params['n_cores'])
-    # Full preprocessing pipeline - starting from raw
-     if params['p_type'] == 'full':
+    Full preprocessing pipeline - starting from raw
+    if params['p_type'] == 'full':
          # anatomical pipeline
          # get unique subj ids while preserving order
          subj_unq = list(dict.fromkeys(subj))
@@ -740,14 +762,11 @@ def preprocess_map(subj, scan, params, output_dict, dataset):
     # Physio preprocessing
     physio_iter = zip(
       repeat(params['physio']), subj, scan, repeat(dataset), 
-      repeat(params['signals']), repeat(params['func']), 
-      repeat(output_dict), repeat(params['resample_physio']),
-      repeat(params['trim_physio']), repeat(params['resample_to_func'])
+      repeat(params['func']), repeat(output_dict), 
+      repeat(params['resample_physio']), repeat(params['trim_physio']), 
+      repeat(params['resample_to_func']), repeat(no_eeglab)
     )
-    # pool.starmap(physio_proc, physio_iter)
-    physio_proc(params['physio'], subj[0], scan[0], dataset, params['signals'], 
-                params['func'], output_dict, params['resample_physio'], 
-                params['trim_physio'], params['resample_to_func'])
+    pool.starmap(physio_proc, physio_iter)
 
 
 if __name__ == '__main__':
@@ -766,12 +785,18 @@ if __name__ == '__main__':
                         default = 1,
                         required=False,
                         type=int)
+    parser.add_argument('-no_eeglab', '--no_eeglab',
+                        help='Whether to skip eeglab preprocessing for natview dataset',
+                        action='store_true')
+
     args_dict = vars(parser.parse_args())
+    # if dataset == 'all', run through all datasets and preprocess
     if args_dict['dataset'] == 'all':
         for d in datasets:
-            preprocess(d, args_dict['n_cores'])
+            preprocess(d, args_dict['n_cores'], args_dict['no_eeglab'])
     else:
-        preprocess(args_dict['dataset'], args_dict['n_cores'])
+        preprocess(args_dict['dataset'], args_dict['n_cores'], 
+                   args_dict['no_eeglab'])
 
 
 
