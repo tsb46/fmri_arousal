@@ -21,6 +21,10 @@
 % Important Note: run this script from this directory (utils)
 %% Add path of base directory and eeglab directory
 addpath(genpath('../external/eeglab'))
+
+%% Create output eeg directory, it doesn't exist
+mkdir '../data/dataset_natview/eeg/proc1_eeg'
+
 %% load natview subject file and define directories
 subjects = readtable('../data/dataset_natview/subject_list_natview.csv');
 input_dir = '../data/dataset_natview/eeg/raw';
@@ -28,7 +32,7 @@ output_dir = '../data/dataset_natview/eeg/proc1_eeg';
 eeg_format = 'sub-%s_ses-0%d_task-rest_eeg.set';
 
 %% Loop through subjects and preprocess
-for row = 1:height(subjects)
+for row = 12:height(subjects)
     if subjects{row,1} < 10
         subj = strcat('0',num2str(subjects{row,1}));
     else
