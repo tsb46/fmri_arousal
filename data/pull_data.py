@@ -169,7 +169,7 @@ def download_natview(subjects):
 	    for template in anat_templates:
 	        temp_base = os.path.basename(template)
 	        anat_fp = f'{s3_prefix_proc}/sub-{subj}/ses-{ses_str}/{template}'
-	        anat_out = f'dataset_natview/anat/raw/sub-{subj}_ses-{ses_str}_{temp_base}'
+	        anat_out = f'dataset_natview/anat/raw/sub-{subj}_{temp_base}'
 	        with open(anat_out, 'wb') as f:
 	            s3_client.download_fileobj(s3_bucket_name, anat_fp, f)
 
