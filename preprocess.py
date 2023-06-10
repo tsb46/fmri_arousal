@@ -283,7 +283,7 @@ def get_fp(dataset):
         }
     elif dataset == 'natview':
         func='sub-{0}_ses-0{1}_task-rest_bold.nii.gz'
-        anat = 'sub-{0}_ses-01_T1w1_denoise.nii.gz'
+        anat = 'sub-{0}_T1w1_denoise.nii.gz'
         physio = {
             'eeg': 'sub-{0}_ses-0{1}_task-rest_eeg.set',
             'eye': 'sub-{0}_ses-0{1}_task-rest_recording-eyetracking_physio.tsv.gz',
