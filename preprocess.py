@@ -734,7 +734,7 @@ def preprocess(dataset, n_cores, no_eeglab):
 def preprocess_map(subj, scan, params, output_dict, dataset, no_eeglab):
     # apply preprocessing pipeline to each subject in parallel
     pool = Pool(processes=params['n_cores'])
-    Full preprocessing pipeline - starting from raw
+    # Full preprocessing pipeline - starting from raw
     if params['p_type'] == 'full':
          # anatomical pipeline
          # get unique subj ids while preserving order
