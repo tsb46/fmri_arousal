@@ -4,10 +4,20 @@ import shutil
 
 from nipype.interfaces import fsl
 from nipype.interfaces.utility import Function
-from utils.load_utils import get_fp_base
+from utils.load_write import get_fp_base
 
 # Ensure output is .nii.gz
 fsl.FSLCommand.set_default_output_type('NIFTI_GZ')
+
+
+def apply_mask(fp, fp_out, mask):
+    # apply mask to functional image 
+    applymask = fsl.ApplyMask()
+    applymask.inputs.in_file = fp
+    applymask.inputs.mask_file = mask
+    applymask.inputs.out_file = fp_out
+    applymask_res = applymask.run()
+
 
 def bet(fp, fp_out):
     # BET - Skullstrip anatomical Image
@@ -140,7 +150,7 @@ def slicetime(fp, fp_out, st_fp, tr):
 
 
 def smooth(fp, fp_out, fwhm=5.0):
-    # 3mm FWHM isotropic smoothing
+    # 5mm FWHM isotropic smoothing
     smooth = fsl.Smooth(fwhm=fwhm)
     smooth.inputs.in_file = fp
     smooth.inputs.smoothed_file=fp_out

@@ -78,11 +78,3 @@ def clip_spikes(ts, spike_thres=5):
     ts_clip = ts.clip(-ts_spike_thres, ts_spike_thres)
     return ts_clip
 
-
-
-    
-
-
-
-
-

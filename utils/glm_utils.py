@@ -148,11 +148,14 @@ def mask_voxels(func_data):
     return func_data_masked, mask, beta_map
 
 
-def onsets_to_block(df, scan_len, tr):
+def onsets_to_block(df, tr, expand=None):
+    # convert blocks onsets and duration to TR indices of blocks
     block_ts = []
     for onset, dur in zip(df.onset, df.duration):
         tr_event = int(np.floor(onset/tr))
         tr_dur = int(np.ceil(dur/tr))
+        if expand is not None:
+            tr_dur += expand
         block_ts.append(np.arange(tr_event, tr_event+tr_dur))
 
     return block_ts

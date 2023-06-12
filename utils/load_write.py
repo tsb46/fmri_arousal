@@ -8,23 +8,26 @@ from scipy.io import loadmat
 from scipy.stats import zscore
 from sklearn.linear_model import LinearRegression
 from utils.signal_utils import butterworth_filter
-from utils.load_utils import find_fps, print_filter_info
-from utils.load_physio import preprocess_physio
 
 # path to the analysis parameter .json file. Never move this out of the base directory!
 params_fp='analysis_params.json'
 
+# Dilated mask that includes sinuses slightly outside gray matter tissue
+mask="masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz"
 
-def convert_2d(mask, nifti_data):
-    nonzero_indx = np.nonzero(mask)
+
+def convert_2d(mask_bin, nifti_data):
+    # convert 4d nifti to 2d matrix using mask
+    nonzero_indx = np.nonzero(mask_bin)
     nifti_2d = nifti_data[nonzero_indx]
     return nifti_2d.T
 
 
-def convert_4d(mask, nifti_data):
-    nifti_4d = np.zeros(mask.shape + (nifti_data.shape[0],), 
+def convert_4d(mask_bin, nifti_data):
+    # convert 2d matrix to 4d nifti using mask
+    nifti_4d = np.zeros(mask_bin.shape + (nifti_data.shape[0],), 
                         dtype=nifti_data.dtype)
-    nifti_4d[mask, :] = nifti_data.T
+    nifti_4d[mask_bin, :] = nifti_data.T
     return nifti_4d
 
 
@@ -51,13 +54,42 @@ def filter_zero_voxels(nifti_data, group_method, use_first=True):
         return nifti_data, zero_mask, orig_n_vert
 
 
+def find_fps(dataset, physio, params):
+    # find file paths to functional and physio files
+    # load subject list
+    subj_list, scan_list = load_subject_list(dataset, params['subject_list'])
+    # get functional file paths
+    func_fps = [params['func'].format(subj, scan) 
+                for subj, scan in zip(subj_list, scan_list)]
+    fps = {
+        'func': func_fps
+    }
+    # if physio is specified, pull physio
+    if physio is not None:
+        physio_fps = [params['physio'].format(subj, scan, physio) if scan is not None 
+                      else params['physio'].format(subj, physio)
+                      for subj, scan in zip(subj_list, scan_list)]
+        fps['physio'] = physio_fps
+    return fps
+
+
+def get_fp_base(fp):
+    # get nifti file path without extenstion
+    fp_split = os.path.splitext(fp)
+    if fp_split[1] == '.gz':
+        fp_base = os.path.splitext(fp_split[0])[0]
+    else:
+        fp_base = fp_split[0]
+    return fp_base
+
+
 def impute_zero_voxels(nifti_data, zero_mask, orig_n_vert):
     nifti_full = np.zeros([nifti_data.shape[0], orig_n_vert])
     nifti_full[:, zero_mask] = nifti_data
     return nifti_full
 
 
-def initialize_group_func_array(fps, nscans, mask_n):
+def initialize_group_func(fps, nscans, mask_n):
     n_t = 0
     for fp in fps:
         nifti = nb.load(fp)
@@ -72,66 +104,49 @@ def load_chang_bh_event_file():
     return events
 
 
-def load_data(data, physio, load_physio, group_method='stack', physio_group_method='stack', 
-              verbose=True, filter_nan_voxels=True, regress_global=False):
-    params = load_params()
+def load_chang_cue_event_file():
+    # We are ASSUMING that the event timings are the same across all subjects 
+    events = np.loadtxt(f'data/dataset_chang_cue/ectp_onsets.txt')
+    return events
 
-    # Pull physio labels (if not already selected)
-    if data == 'hcp_fix':
-        data_str = 'hcp'
-    else:
-        data_str = data
-    
-    params_data = params[data_str]
-    if physio is None:
-        physio = params_data['physio']
+
+def load_data(dataset, physio, group_method='stack', 
+              physio_group_method='stack', 
+              regress_global=False):
+    # master function for loading and concatenating functional/physio files
+    params = load_params()
+    params_data = params[dataset]
 
     # Load mask
-    mask = nb.load(params_data['mask']).get_fdata() > 0
-
+    mask_bin = nb.load(mask).get_fdata() > 0
 
     # Pull file paths
-    fps = find_fps(data, physio, params_data)
-    # Print filter parameters for functional and physio signals
-    if verbose:
-        print_filter_info(params_data, load_physio, physio)
+    fps = find_fps(dataset, physio, params_data)
 
     # Pull data for group level analysis
-    if verbose:
-        print('Loading all subjects')
-        if regress_global:
-            print('regressing out global signal')
-    func_data = load_group_func(fps['func'], mask, params_data, group_method, regress_global, verbose)
-    if load_physio:
-        physio_proc = []
-        for p in physio:
-            p_proc = load_group_physio(fps[p], params_data, data, p, physio_group_method)
-            physio_proc.append(p_proc)
+    func_data = load_group_func(fps['func'], mask_bin, group_method, 
+                                params_data, regress_global)
+    if physio is not None:
+        physio_sig = load_group_physio(fps['physio'], physio_group_method)
     else:
-        physio_proc = None
+        physio_sig = None
 
     # Filter voxels with no recorded BOLD signal (i.e. time series of all 0s)
-    if filter_nan_voxels:
-        func_data, zero_mask, n_vert_orig = filter_zero_voxels(func_data, group_method)
-    else:
-        n_vert_orig = np.nonzero(mask)[0].shape[0]
-        zero_mask = np.tile(1, n_vert_orig).astype(bool)
+    func_data, zero_mask, n_vert_orig = filter_zero_voxels(func_data, group_method)
 
-    return func_data, physio_proc, physio, zero_mask, n_vert_orig, params_data
+    return func_data, physio_sig, zero_mask, n_vert_orig
 
 
-def load_group_func(fps, mask, params, group_method, regress_global, verbose):
+def load_group_func(fps, mask_bin, group_method, params, regress_global):
     if group_method == 'stack':
-        mask_n = len(np.nonzero(mask)[0])
+        mask_n = len(np.nonzero(mask_bin)[0])
         indx=0
-        group_data = initialize_group_func_array(fps, params['nscans'], mask_n) 
+        group_data = initialize_group_func(fps, params['nscans'], mask_n) 
     elif group_method == 'list':
         group_data = []
     # Loop through files and concatenate/append
     for fp in fps:
-        if verbose:
-            print(fp)
-        subj_data = load_subject_func(fp, mask, params, regress_global)
+        subj_data = load_subject_func(fp, mask_bin, regress_global)
         subj_t = subj_data.shape[0]
         # Normalize data before concatenation
         subj_data = zscore(subj_data)
@@ -144,17 +159,15 @@ def load_group_func(fps, mask, params, group_method, regress_global, verbose):
     return group_data
 
 
-
-def load_group_physio(fps, params, data, physio_label, group_method):
+def load_group_physio(fps, group_method):
     physio_all = []
     for fp in fps:
-        proc_sig = load_subject_physio(fp, params, data, physio_label)
-
-        if params['data']['physio']['concat_method'] == 'zscore':
-            proc_sig = zscore(proc_sig)
-
-        physio_all.append(proc_sig)
-
+        # load subject physio signal
+        physio = load_subject_physio(fp)
+        # z-score before concetenation
+        physio = zscore(physio)
+        physio_all.append(physio)
+    # stack or append to list
     if group_method == 'stack':
         return np.concatenate(physio_all)
     elif group_method == 'list':
@@ -174,28 +187,55 @@ def load_params():
     return params
 
 
-def load_subject_func(fp, mask, params, regress_global):
-    # Load scan
-    nifti = nb.load(fp, keep_file_open = True)
+def load_subject_func(fp, mask_bin, regress_global):
+    # Load subject functional
+    nifti = nb.load(fp)
     nifti_data = nifti.get_fdata()
-    nifti.uncache()
-    nifti_data = convert_2d(mask, nifti_data)
-    nifti_data = filter_functional_data(nifti_data, params)
+    nifti_data = convert_2d(mask_bin, nifti_data)
+    # regress out global signal, if specified
     if regress_global:
         nifti_data = regress_global_signal(nifti_data)
     return nifti_data
 
 
-def load_subject_physio(fp, params, data, physio_label):    
-    # Load AND preprocess physio
+def load_subject_list(dataset, subject_list_fp):
+    # given dataset and filepath, get list of subjects and scan/runs
+    subj_df = pd.read_csv(subject_list_fp)
+    # load subject list for a dataset
+    if dataset == 'chang':
+        subj = subj_df.subject.tolist()
+        scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan] 
+    elif dataset == 'chang_bh':
+        subj = subj_df.subject.tolist()
+        scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan]
+    elif dataset == 'chang_cue':
+        subj = subj_df.subject.tolist()
+        scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan]
+    elif dataset == 'hcp':
+        subj = subj_df.subject.tolist()
+        scan = subj_df.lr.tolist()
+    elif dataset == 'natview':
+        subj = [f'0{s}' if s <10 else f'{s}' for s in subj_df.subject]
+        scan = subj_df.scan.tolist()
+    elif dataset == 'nki': 
+        subj = subj_df.subject.tolist()
+        scan = [None] * len(subj)
+    elif dataset == 'spreng':
+        subj = subj_df.subject.tolist()
+        scan = subj_df.scan.tolist()
+    elif dataset == 'yale':
+        subj = subj_df.subject.tolist()
+        scan = subj_df.scan.tolist()
+    return subj, scan
+
+
+def load_subject_physio(fp):    
+    # Load physio
     physio_signal = np.loadtxt(fp)
-    if physio_signal.ndim == 1:
-        physio_signal = physio_signal[:, np.newaxis]
-    physio_signal_proc = preprocess_physio(physio_signal, params, physio_label)
-    return physio_signal_proc
+    return physio_signal[:, np.newaxis]
 
 
-def regress_global_signal(func_data, mask_nan =True):
+def regress_global_signal(func_data, mask_nan=True):
     if mask_nan:
         nan_mask = ~np.any(np.isnan(func_data), axis=0)
         func_data_m = func_data[:, nan_mask]
@@ -211,15 +251,15 @@ def regress_global_signal(func_data, mask_nan =True):
     return func_data
 
 
-def write_nifti(data, output_file, zero_mask, orig_n_vert, mask_fp):
+def write_nifti(data, output_file, zero_mask, orig_n_vert):
     data_imp = impute_zero_voxels(data, zero_mask, orig_n_vert)
-    mask = nb.load(mask_fp)
-    mask_bin = mask.get_fdata() > 0
-    nifti_4d = np.zeros(mask.shape + (data_imp.shape[0],), 
+    mask_nii = nb.load(mask)
+    mask_bin = mask_nii.get_fdata() > 0
+    nifti_4d = np.zeros(mask_nii.shape + (data_imp.shape[0],), 
                         dtype=data_imp.dtype)
     nifti_4d[mask_bin, :] = data_imp.T
 
-    nifti_out = nb.Nifti2Image(nifti_4d, mask.affine)
+    nifti_out = nb.Nifti2Image(nifti_4d, mask_nii.affine)
     nb.save(nifti_out, output_file)
 
 

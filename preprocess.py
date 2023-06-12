@@ -15,14 +15,15 @@ from multiprocessing import Pool
 from scipy.io import loadmat
 from scipy.stats import zscore
 from utils.fsl_utils import (
-    bet, concat_transform, coregister,
-    fast, flirt, fnirt, mcflirt,
-    resample_func, robustfov,
-    reorient, slicetime, smooth,
+    apply_mask, bet, concat_transform, coregister,
+    fast, flirt, fnirt, mcflirt, resample_func, 
+    robustfov, reorient, slicetime, smooth,
     trim_vol, wm_thres, warp_func
  )
-from utils.load_utils import get_fp_base
-from utils.load_write import convert_2d, convert_4d
+from utils.load_write import (
+    convert_2d, convert_4d,
+    get_fp_base, load_subject_list
+)
 from utils.physio_utils import (
     extract_ecg_signals, extract_eeg_signals,
     extract_gsr_signals, extract_ppg_signals, 
@@ -221,10 +222,11 @@ def func_full_proc(fp, subj, scan, anat_out_dict, output_dict, tr,
     fp_warp = f"{output_dict['func']['standard']}/{fp}"
     warp_func(fp_mcflirt, fp_func2struct, anat_out['fnirt_coef'], fp_warp, mask)
     # apply func minimal preprocessing pipeline
-    func_minimal_proc(fp, subj, scan, output_dict, tr, resample=False)
+    func_minimal_proc(fp, subj, scan, output_dict, tr, resample=False, smooth=True)
 
 
-def func_minimal_proc(fp, subj, scan, output_dict, tr, resample=True):
+def func_minimal_proc(fp, subj, scan, output_dict, tr, 
+                      resample=True, smooth=True):
     # minimal preprocessing pipeline starting with MNI-registred and 
     # preprocessed functional data
     fp = fp.format(subj, scan)
@@ -237,10 +239,12 @@ def func_minimal_proc(fp, subj, scan, output_dict, tr, resample=True):
         fp_in = fp_resample
     else:
         fp_in = f"{output_dict['func']['standard']}/{fp}"
-    # spatial smoothing (and mask)
-    # Get mask
+    # mask and, if specified, smooth (5mm FWHM)
     fp_smooth = f"{output_dict['func']['smooth']}/{fp}"
-    smooth(fp_in, fp_smooth)
+    if smooth:
+        smooth(fp_in, fp_smooth)
+        fp_in = fp_smooth
+    apply_mask(fp_in, fp_smooth, mask)
     # bandpass filter
     # Load mask
     mask_bin = nb.load(mask).get_fdata() > 0
@@ -313,36 +317,6 @@ def get_fp(dataset):
             'out': '{0}_task-rest_run-0{1}_physio'
         }
     return func, anat, physio
-
-
-def load_subject_list(dataset, subject_list_fp):
-    subj_df = pd.read_csv(subject_list_fp)
-    # load subject list for a dataset
-    if dataset == 'chang':
-        subj = subj_df.subject.tolist()
-        scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan] 
-    elif dataset == 'chang_bh':
-        subj = subj_df.subject.tolist()
-        scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan]
-    elif dataset == 'chang_cue':
-        subj = subj_df.subject.tolist()
-        scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan]
-    elif dataset == 'hcp':
-        subj = subj_df.subject.tolist()
-        scan = subj_df.lr.tolist()
-    elif dataset == 'natview':
-        subj = [f'0{s}' if s <10 else f'{s}' for s in subj_df.subject]
-        scan = subj_df.scan.tolist()
-    elif dataset == 'nki': 
-        subj = subj_df.subject.tolist()
-        scan = [None] * len(subj)
-    elif dataset == 'spreng':
-        subj = subj_df.subject.tolist()
-        scan = subj_df.scan.tolist()
-    elif dataset == 'yale':
-        subj = subj_df.subject.tolist()
-        scan = subj_df.scan.tolist()
-    return subj, scan
 
 
 def load_proc_eeg(fp, dataset, resample, trim, no_eeglab, eeglab_dir=None):
@@ -639,13 +613,14 @@ def preprocess(dataset, n_cores, no_eeglab):
             'p_type': 'minimal', # minimal or full preprocessing pipeline
             'robustfov': False, # whether to crop anatomical image
             'slicetime': None, # filepath to slice timing file
+            'smooth': False, # whether to smooth (5mm fwhm) functional scan
             'trim': None, # number of volumes to trim from begin of functional scan
             'n_cores': n_cores, 
             'eeg': True, # whether eeg is collected in this dataset
             'tr': params_dataset['tr'], # functional TR
             'resample_physio': 100, # resample frequency for physio,
             'trim_physio': 14.7, # time (in secs) to trim off front of physio signals,
-            'resample_to_func': True # whether to resample physio to functional scan length
+            'resample_to_func': True # whether to resample physio to functional scan length,
         }
 
     elif dataset == 'hcp':
@@ -653,7 +628,8 @@ def preprocess(dataset, n_cores, no_eeglab):
         params = {
             'p_type': 'minimal',
             'robustfov': False,
-            'slicetime': None, 
+            'slicetime': None,
+            'smooth': True,
             'trim': None,
             'n_cores': n_cores,
             'eeg': False,
@@ -667,7 +643,8 @@ def preprocess(dataset, n_cores, no_eeglab):
         params = {
             'p_type': 'full',
             'robustfov': True,
-            'slicetime': 'data/dataset_natview/slicetiming_natview.txt', 
+            'slicetime': 'data/dataset_natview/slicetiming_natview.txt',
+            'smooth': True,
             'trim': -2,
             'n_cores': n_cores,
             'eeg': True,
@@ -681,7 +658,8 @@ def preprocess(dataset, n_cores, no_eeglab):
         params = {
             'p_type': 'full',
             'robustfov': False,
-            'slicetime': None, 
+            'slicetime': None,
+            'smooth': True,
             'trim': None,
             'n_cores': n_cores,
             'eeg': False,
@@ -696,6 +674,7 @@ def preprocess(dataset, n_cores, no_eeglab):
             'p_type': 'minimal',
             'robustfov': False,
             'slicetime': None, 
+            'smooth': True,
             'trim': None,
             'n_cores': n_cores,
             'eeg': False,
@@ -710,6 +689,7 @@ def preprocess(dataset, n_cores, no_eeglab):
             'p_type': 'full',
             'robustfov': False,
             'slicetime': None, 
+            'smooth': True,
             'trim': 10,
             'n_cores': n_cores,
             'eeg': False,
@@ -755,8 +735,9 @@ def preprocess_map(subj, scan, params, output_dict, dataset, no_eeglab):
 
      # Minimal preprocessing pipeline - starting from preprocessed
     elif params['p_type'] == 'minimal':
-        func_iter = zip(repeat(params['func']), subj, scan, repeat(output_dict),
-                     repeat(params['tr']))
+        func_iter = zip(repeat(params['func']), subj, scan, 
+                        repeat(output_dict), repeat(params['tr']), 
+                        repeat(True), repeat(params['smooth']))
         pool.starmap(func_minimal_proc, func_iter)
 
     # Physio preprocessing
