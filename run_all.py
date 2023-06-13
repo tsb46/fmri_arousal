@@ -65,12 +65,15 @@ for d in datasets:
 # the expand argument (int) adds TRs to expand the 
 # end of the task block to account for lag of HRF
 os.makedirs('results/task_avg', exist_ok=True)
-print('run task averaging for chang_bh')
-run_task_avg('chang_bh', expand=0, out_dir='results/task_avg')
-print('run task averaging for chang_cue')
-run_task_avg('chang_cue', expand=0, out_dir='results/task_avg')
-print('run task averaging for nki')
-run_task_avg('nki', expand=2, out_dir='results/task_avg')
+if 'chang_bh' in datasets:
+	print('run task averaging for chang_bh')
+	run_task_avg('chang_bh', expand=0, out_dir='results/task_avg')
+if 'chang_cue' in datasets:
+	print('run task averaging for chang_cue')
+	run_task_avg('chang_cue', expand=0, out_dir='results/task_avg')
+if 'nki' in datasets:
+	print('run task averaging for nki')
+	run_task_avg('nki', expand=2, out_dir='results/task_avg')
 
 
 
