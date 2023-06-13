@@ -6,6 +6,7 @@ import pickle
 from numpy.linalg import pinv
 from scipy.signal import hilbert
 from scipy.stats import zscore
+from utils.cpca_reconstruction import cpca_recon
 from utils.load_write import load_data, write_nifti
 from utils.rotation import varimax, promax
 
@@ -88,7 +89,8 @@ def write_results(dataset, pca_output, pca_type, zero_mask, n_vert,
     pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
 
 
-def run_pca(dataset, n_comps, pca_type, rotate, regress_global, out_dir=None):
+def run_pca(dataset, n_comps, pca_type, rotate, recon, regress_global, 
+            out_dir=None):
     # load dataset
     func_data, _, zero_mask, n_vert = load_data(dataset, physio=None, 
                                                 regress_global=regress_global) 
@@ -102,6 +104,13 @@ def run_pca(dataset, n_comps, pca_type, rotate, regress_global, out_dir=None):
     # rotate pca weights, if specified
     if rotate is not None:
         pca_output = rotation(pca_output, func_data, rotate)
+
+    # if cpca, and recon=True, create reconstructed time courses of complex PC
+    if recon & (pca_type == 'complex'):
+        del func_data # free up memory
+        n_recon = 1 # only reconstruct first component
+        cpca_recon(dataset, pca_output, n_recon, rotate, zero_mask, n_vert, 
+                   out_dir, n_bins=30)
 
     # write out results
     write_results(dataset, pca_output, pca_type, zero_mask, n_vert, 
@@ -132,12 +141,15 @@ if __name__ == '__main__':
                         required=False,
                         choices=['varimax', 'promax'],
                         type=str)
+    parser.add_argument('-recon', '--recon',
+                        help='Whether to reconstruct time courses from complex PCA',
+                        action='store_true',
+                        required=False)
     parser.add_argument('-g', '--regress_global_sig',
                         help='Whether to regress out global signal from functional data',
-                        default=0,
-                        required=False,
-                        type=int)
+                        action='store_true',
+                        required=False)
     args_dict = vars(parser.parse_args())
     run_pca(args_dict['dataset'], args_dict['n_comps'], 
             args_dict['pca_type'], args_dict['rotate'], 
-            args_dict['regress_global_sig'])
+            args_dict['recon'], args_dict['regress_global_sig'])

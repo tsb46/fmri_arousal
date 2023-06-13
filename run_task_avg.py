@@ -39,6 +39,7 @@ def construct_task_blocks(dataset, events, expand):
         if dataset == 'chang_bh':
             event_blocks = [('breath', event_blocks)]
         elif dataset == 'chang_cue':
+            event_blocks = filter_chang_cue_blocks(event_blocks)
             event_blocks = [('cue', event_blocks)]
     elif dataset == 'nki':
         event_df = group_nki_blocks(events)
@@ -63,6 +64,20 @@ def event_index(func_data, event_blocks, compliance=None):
 
 def event_average(func_event_blocks):
     return func_event_blocks.mean(axis=0)
+
+
+def filter_chang_cue_blocks(blocks):
+    """
+    some auditory tones in the chang cue dataset are too close together 
+    for reliabile separation of overlapping hemodynamic responses
+    """
+    block_prev = []
+    blocks_filt = []
+    for block in blocks:
+        if (len(set(block) & set(block_prev)) == 0) & (block[-1] <= 692):
+            blocks_filt.append(block)
+        block_prev = block
+    return blocks_filt
 
 
 def load_chang_compliance():
@@ -115,31 +130,27 @@ def run_task_avg(dataset, expand, out_dir=None):
     # load subject list for mapping functional to compliance (only used for chang_bh)
     subject, scan = load_subject_list(dataset, params[dataset]['subject_list'])
 
-    # loop through subject functional scans and segment into task blocks
+    # loop through blocks types and subject functional scans and do:
+    # segment into task blocks, stack across subjects and average
     # if chang_bh, use compliance text to remove task blocks where there was
     # no compliance (i.e. no 'deep breath')
-    func_block_all = []
-    for i, (func, subj, run) in enumerate(zip(func_data, subject, scan)):
-        if dataset == 'chang_bh':
-            compliance_subj = compliance[f'{subj}_{run}']
-        else:
-            compliance_subj = None
+    for block in event_blocks:
         func_blocks = []
-        for block in event_blocks:
+        for i, (func, subj, run) in enumerate(zip(func_data, subject, scan)):
+            if dataset == 'chang_bh':
+                compliance_subj = compliance[f'{subj}_{run}']
+            else:
+                compliance_subj = None
             func_segment = event_index(func, block[1], compliance_subj)
             func_blocks.append(func_segment)
-        func_block_all.append(func_blocks)
-
-    # get block labels
-    block_labels = [b[0] for b in event_blocks]
-    # loop through blocks and stack then average then write out
-    for func_block, label in zip(func_block_all, block_labels):
-        func_block_array = np.vstack(func_block)
-        func_block_avg = func_block_array.mean(axis=0)
-        write_results(dataset, label, func_block_avg, zero_mask, n_vert, out_dir)
-
-
-
+        # stack all blocks across subjects
+        func_blocks_array = np.vstack(func_blocks)
+        # average across all blocks
+        func_blocks_avg = func_blocks_array.mean(axis=0)
+        # write results
+        write_results(dataset, block[0], func_blocks_avg, zero_mask, n_vert, out_dir)
+        
+        
 if __name__ == '__main__':
     """Run main analysis"""
     parser = argparse.ArgumentParser(description='Event averaging of task fMRI datasets')

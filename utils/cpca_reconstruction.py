@@ -22,7 +22,7 @@ def create_dynamic_phase_maps(recon_ts, bin_indx, n_bins):
     return dynamic_phase_map
 
 
-def reconstruct_ts(pca_res, n, real=True, rotation=False):
+def reconstruct_ts(pca_res, n, rotation, real=True):
     # reconstruct ts 
     if rotation:
         recon_ts = pca_res['pc_scores'][:, n] @ pca_res['loadings'][n, :].conj()
@@ -44,15 +44,16 @@ def write_results(dataset,recon_comp, n_comp, zero_mask, n_vert, out_dir):
         analysis_str = f'{out_dir}/{dataset}_cpca_recon_n{n_comp}'
     else:
         analysis_str = f'{dataset}_cpca_recon_n{n_comp}'
-    write_nifti(recon_comp, analysis_str, zero_mask, n_vert, params['mask'])
+    write_nifti(recon_comp, analysis_str, zero_mask, n_vert)
 
 
-def cpca_recon(dataset, cpca_res, n_recon, rotation, out_dir=None, n_bins=30):
+def cpca_recon(dataset, cpca_res, n_recon, rotation, zero_mask, n_vert,
+               out_dir=None, n_bins=30):
     # reconstruct cpca component 'movies' from cpca results
     bin_indx_all = []
     bin_centers_all = []
     for n in range(n_recon):
-        recon_ts = reconstruct_ts(cpca_res, [n], real, rotation)
+        recon_ts = reconstruct_ts(cpca_res, [n], rotation)
         phase_ts = np.angle(cpca_res['pc_scores'][:,n])
         # shift phase delay angles from -pi to pi -> 0 to 2*pi
         phase_ts = np.mod(phase_ts, 2*np.pi)
