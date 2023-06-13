@@ -68,7 +68,9 @@ python pull_data.py -d repo_label
 # Preprocess
 A single command-line Python script is provided to preprocess all datasets:
 
+```
 python preprocess.py -d all
+```
 
 The above script will assume that all datasets have been downloaded. If you want to preprocess a specific dataset, provide the repo label of the dataset to the '-d' argument:
 
