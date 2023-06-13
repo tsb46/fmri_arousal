@@ -15,10 +15,23 @@ pip install -r requirements.txt
 
 ## MATLAB and EEGLAB
 
+**Note: MATLAB is only needed for preprocessing of the NATVIEW dataset.**
+
 ### MATLAB
-For one dataset, NATVIEW, MATLAB is required for the EEGLAB preprocessing. **If the NATVIEW dataset is not used, there is no need for MATLAB**. Our EEG preprocessing was conducted in MATLAB R2023a. The matlab EEGLAB preprocesing script is integrated into the default Python preprocessing pipeline (preprocess.py) via the [MATLAB Engine API for Python](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html). This puts constraints on the Python version that must be used (see [MATLAB Engine Python Version Requirements](https://www.mathworks.com/support/requirements/python-compatibility.html)), and its implementation can be a headache. Alternatively, one can run the EEGLAB preprocessing for the NATVIEW dataset in a standalone MATLAB script ('utils/preprocess_natview.m') and pass this information to the Python preprocessing pipeline via a command-line argument (see below).
+For the NATVIEW dataset, MATLAB is required for the EEGLAB preprocessing. Our EEG preprocessing was conducted in MATLAB R2023a. The matlab EEGLAB preprocesing script is integrated into the default Python preprocessing pipeline (preprocess.py) via the [MATLAB Engine API for Python](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html). To use the EEGLAB preprocessing script on the NATVIEW dataset, one additional pip install of the MATLAB engine API is necessary:
+
+```
+python -m pip install matlabengine
+```
+
+The MATLAB engine API puts constraints on the Python version that can be used (see [MATLAB Engine Python Version Requirements](https://www.mathworks.com/support/requirements/python-compatibility.html)), and its implementation can be a headache. Alternatively, one can run the EEGLAB preprocessing for the NATVIEW dataset in a standalone MATLAB script ('utils/preprocess_natview.m') and pass this information to the Python preprocessing pipeline via a command-line argument (see below). Instructions are provided in the MATLAB script.
 
 ### EEGLAB
+[EEGLAB](https://github.com/sccn/eeglab) and the [fMRIB plugin](https://github.com/sccn/fMRIb) are required for NATVIEW EEG preprocessing. If the default Python pipeline (preprocess.py) is used with the MATLAB Engine API, the EEGLAB directory must be placed in the [external](external/) directory so that EEGLAB functions are readable from the script. Detailed instructions can be found in the README.md in the [external](external/) directory.
+
+If you are using the standalone MATLAB script (see above), you place the EEGLAB directory in any location, provided that it is added to the MATLAB path before running the script.
+
+
 
 
 
