@@ -32,7 +32,7 @@
 		"tr": 0.72,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP"],
 		"nscans": 30,
-		"func": "data/dataset_hcp/func_fix/proc3_bandpass/{0}_{1}_hp2000_clean.nii.gz",
+		"func": "data/dataset_hcp/func/proc3_bandpass/{0}_{1}_hp2000_clean.nii.gz",
 		"physio": "data/dataset_hcp/physio/proc1_physio/{0}_{1}_physio_{2}_filt.txt"
 	},
 	"natview": {

@@ -63,4 +63,8 @@ def cpca_recon(dataset, cpca_res, n_recon, rotation, zero_mask, n_vert,
         dynamic_phase_map = create_dynamic_phase_maps(recon_ts, bin_indx, n_bins)
         bin_indx_all.append(bin_indx); bin_centers_all.append(bin_centers)
         write_results(dataset, dynamic_phase_map, n, zero_mask, n_vert, out_dir)
-    pickle.dump([bin_indx_all, bin_centers_all], open(f'{dataset}_cpca_recon_results.pkl', 'wb'))
+    if out_dir is not None:
+        pkl_out = f'{out_dir}/{dataset}_cpca_recon_results.pkl'
+    else:
+        pkl_out = f'{dataset}_cpca_recon_results.pkl'
+    pickle.dump([bin_indx_all, bin_centers_all], open(pkl_out, 'wb'))
