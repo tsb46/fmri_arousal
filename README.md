@@ -1,7 +1,7 @@
 # Global BOLD and Peripheral Physiology Repo
 This repository contains the code necessary to replicate and extend the analyses of Bolt et al. (2023) - 'A Unified Physiological Process Links Global Patterns of Functional MRI, Respiratory Activity, and Autonomic Signaling' (https://www.biorxiv.org/content/10.1101/2023.01.19.524818v1). 
 
-The primary analyses of the study are contained within the command-line Python utilities (see below), and the Jupyter notebook (analysis.ipynb) in the base directory of the repo. Eight separate fMRI datasets were used for the study and the default pipeline pulls and preprocesses all eight. If one would like to focus their analysis on a smaller subset of the datasets, the preprocessing and analysis scripts allow you to restrict your analyses to those datasets. 
+The primary analyses of the study are contained within the command-line Python utilities (see below), and the Jupyter notebook (analysis.ipynb) in the base directory of the repo. Eight separate fMRI datasets were used for the study. If one would like to focus their analysis on a smaller subset of the datasets, the preprocessing and analysis scripts allow you to restrict your analyses to those datasets. 
 
 
 # Installation and Requirements
@@ -68,7 +68,9 @@ python pull_data.py -d repo_label
 # Preprocess
 A single command-line Python script is provided to preprocess all datasets:
 
+```
 python preprocess.py -d all
+```
 
 The above script will assume that all datasets have been downloaded. If you want to preprocess a specific dataset, provide the repo label of the dataset to the '-d' argument:
 
