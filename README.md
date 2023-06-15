@@ -78,6 +78,13 @@ The above script will assume that all datasets have been downloaded. If you want
 python preprocess.py -d repo_label
 ```
 
+If you decided to preprocess the NATVIEW EEG dataset with the stand-alone MATLAB script (utils/natview_preprocess.py), make sure you pass the '-no_eeglab' flag to the script:
+
+```
+python preprocess.py -d all -no_eeglab
+```
+
+
 # Analysis
 The majority of the analyses reported in the manuscript are performed in the [analysis.ipynb](analysis.ipynb) Jupyter notebook. In order to run the analyses in the notebook, outputs from PCA and CPCA are needed. To get all the necessary outputs:
 
