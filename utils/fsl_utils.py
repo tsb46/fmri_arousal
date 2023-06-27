@@ -19,6 +19,20 @@ def apply_mask(fp, fp_out, mask):
     applymask_res = applymask.run()
 
 
+def apply_transform_mask(fp, fp_out, ref, mat):
+    # apply affine transform to functional
+    applyxfm = fsl.ApplyXFM()
+    applyxfm.inputs.in_file = fp
+    applyxfm.inputs.in_matrix_file = mat 
+    applyxfm.inputs.reference = ref
+    applyxfm.inputs.out_file = fp_out 
+    applyxfm.inputs.apply_xfm = True
+    applyxfm.inputs.interp = 'nearestneighbour' 
+    applyxfm_res = applyxfm.run()
+    # Flirt saves output matrix in base directory 
+    # move to results directory
+    os.remove(applyxfm_res.outputs.out_matrix_file)
+
 def bet(fp, fp_out):
     # BET - Skullstrip anatomical Image
     bet_anat = fsl.BET(frac=0.25, robust=True, mask=True)
@@ -70,6 +84,15 @@ def fast(fp, fp_out):
     return fp_out_wm
 
 
+def first_vol(fp, fp_out):
+    first_vol = fsl.ExtractROI()
+    first_vol.inputs.in_file = fp
+    first_vol.inputs.roi_file = fp_out
+    first_vol.inputs.t_min=0
+    first_vol.inputs.t_size=1
+    first_vol.run()
+
+
 def flirt(fp, fp_out, fp_out_mat):
     # FLIRT affine registration to MNI template
     flirt = fsl.FLIRT()
@@ -96,6 +119,14 @@ def fnirt(fp, fp_affine, fp_out, fp_out_coef):
     fnirt.inputs.log_file = f'{fp_out_base}_log.txt'
     fnirt_res = fnirt.run()
 
+
+def invert_transform(in_mat, out_mat):
+    # invert affine transform
+    invertxfm = fsl.ConvertXFM()
+    invertxfm.inputs.in_file = in_mat
+    invertxfm.inputs.invert_xfm = True
+    invertxfm.inputs.out_file = out_mat
+    invertxfm.run()
 
 def mcflirt(fp, fp_out):
     # McFLIRT Motion Correction
@@ -149,7 +180,7 @@ def slicetime(fp, fp_out, st_fp, tr):
     slicetimer_res = slicetimer.run()
 
 
-def smooth(fp, fp_out, fwhm=5.0):
+def spatial_smooth(fp, fp_out, fwhm=5.0):
     # 5mm FWHM isotropic smoothing
     smooth = fsl.Smooth(fwhm=fwhm)
     smooth.inputs.in_file = fp

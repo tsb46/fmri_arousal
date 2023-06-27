@@ -95,12 +95,21 @@ def load_chang_compliance():
     return compliance_dict
 
 
-def group_nki_blocks(event_df):
+def group_nki_blocks(event_df, merge_rest_breath=True):
+    # group consecutive trials of nki breathhold task
     event_df['hold'] = event_df.trial_type.str.startswith('H')
     event_df['hold_indx'] = (event_df.hold != event_df.hold.shift(1)).cumsum()
-    rest_breath_block = ['R', 'G', 'Deep', 'In', 'Out']
-    event_df['breath'] = event_df.trial_type.isin(rest_breath_block)
-    event_df['breath_indx'] = (event_df.breath != event_df.breath.shift(1)).cumsum()
+    if merge_rest_breath:
+        rest_breath_block = ['R', 'G', 'Deep', 'In', 'Out']
+        event_df['breath'] = event_df.trial_type.isin(rest_breath_block)
+        event_df['breath_indx'] = (event_df.breath != event_df.breath.shift(1)).cumsum()
+    else:
+        breath_block = ['Deep', 'In', 'Out']
+        event_df['breath'] = event_df.trial_type.isin(breath_block)
+        event_df['breath_indx'] = (event_df.breath != event_df.breath.shift(1)).cumsum()
+        rest_block = ['R', 'G']
+        event_df['rest'] = event_df.trial_type.isin(rest_block)
+        event_df['rest_indx'] = (event_df.rest != event_df.rest.shift(1)).cumsum()
     return event_df
 
 
