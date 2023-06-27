@@ -9,6 +9,7 @@ import shutil
 
 from botocore import UNSIGNED
 from botocore.client import Config
+from botocore.handlers import disable_signing
 
 
 # Datasets for download
