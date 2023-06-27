@@ -132,6 +132,7 @@ dmypy.json
 # Data and result folders
 data/dataset_chang/*/
 data/dataset_nki/*/
+data/dataset_nki_rest/*/
 data/dataset_hcp/*/
 data/dataset_chang_bh/*/
 data/dataset_chang_cue/*/

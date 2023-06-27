@@ -40,8 +40,8 @@ params_fp='analysis_params.json'
 
 # datasets
 datasets = ['chang', 'chang_bh', 'chang_cue', 
-            'nki', 'hcp', 'spreng', 'yale', 
-            'natview']
+            'nki', 'nki_rest', 'hcp', 'spreng', 
+            'yale', 'natview']
 
 # eeg channel selections for chang and natview datasets
 chang_eeg_chan = ['P3', 'P4', 'Pz', 'O1', 'O2', 'Oz']
@@ -451,11 +451,18 @@ def get_fp(dataset):
             'out': 'sub-{0}_ses-0{1}_task-rest_physio'
         }
     elif dataset == 'nki': 
-        func = '{0}_task_breathhold.nii.gz'
-        anat = '{0}_T1w.nii.gz'
+        func = 'sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_bold.nii.gz'
+        anat = 'sub-{0}_T1w.nii.gz'
         physio = {
-            'physio': '{0}_task_breathhold_physio.tsv.gz',
-            'out': '{0}_task_breathhold_physio'
+            'physio': 'sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_physio.tsv.gz',
+            'out': 'sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_physio'
+        }
+    elif dataset == 'nki_rest': 
+        func = 'sub-{0}_ses-{1}_task-rest_acq-1400_bold.nii.gz'
+        anat = 'sub-{0}_T1w.nii.gz'
+        physio = {
+            'physio': 'sub-{0}_ses-{1}_task-rest_acq-1400_physio.tsv.gz',
+            'out': 'sub-{0}_ses-{1}_task-rest_acq-1400_physio'
         }
     elif dataset == 'spreng':
         func = {
@@ -827,7 +834,7 @@ def preprocess(dataset, n_cores, no_eeglab):
             'trim_physio': None,
             'resample_to_func': True 
         }
-    if dataset == 'nki':
+    elif dataset == 'nki':
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
@@ -842,7 +849,22 @@ def preprocess(dataset, n_cores, no_eeglab):
             'trim_physio': None,
             'resample_to_func': True 
         }
-    if dataset == 'spreng':
+    elif dataset == 'nki_rest':
+        params_dataset = params_json[dataset]
+        params = {
+            'p_type': 'full',
+            'robustfov': False,
+            'slicetime': None,
+            'smooth': True,
+            'trim': 7,
+            'n_cores': n_cores,
+            'eeg': False,
+            'tr': params_dataset['tr'],
+            'resample_physio': None,
+            'trim_physio': 9.8,
+            'resample_to_func': True 
+        }
+    elif dataset == 'spreng':
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'multiecho',
@@ -858,7 +880,7 @@ def preprocess(dataset, n_cores, no_eeglab):
             'resample_to_func': True,
             'echo_times': [13.7, 30, 47] # echo times for multiecho scan
         }
-    if (dataset == 'yale') | (dataset == 'all'):
+    elif (dataset == 'yale'):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
@@ -889,54 +911,54 @@ def preprocess(dataset, n_cores, no_eeglab):
 def preprocess_map(subj, scan, params, output_dict, dataset, no_eeglab):
     # apply preprocessing pipeline to each subject in parallel
     pool = Pool(processes=params['n_cores'])
-    # # Full preprocessing pipeline - starting from raw
-    # if (params['p_type'] == 'full') | (params['p_type'] == 'multiecho'):
-    #     # anatomical pipeline
-    #     # get unique subj ids while preserving order
-    #     subj_unq = list(dict.fromkeys(subj))
-    #     # Apply anatomical pipeline to structural scans (possibly in parallel)
-    #     anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict),
-    #                  repeat(params['robustfov']))
-    #     anat_out = pool.starmap(anat_proc, anat_iter)
-    #     # convert anat output to dict with subj id as keys
-    #     anat_out_dict = {a[0]: a[1] for a in anat_out}
+    # Full preprocessing pipeline - starting from raw
+    if (params['p_type'] == 'full') | (params['p_type'] == 'multiecho'):
+        # anatomical pipeline
+        # get unique subj ids while preserving order
+        subj_unq = list(dict.fromkeys(subj))
+        # Apply anatomical pipeline to structural scans (possibly in parallel)
+        anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict),
+                     repeat(params['robustfov']))
+        anat_out = pool.starmap(anat_proc, anat_iter)
+        # convert anat output to dict with subj id as keys
+        anat_out_dict = {a[0]: a[1] for a in anat_out}
 
-    #     # functional pipeline
-    #     if params['p_type'] == 'full':
-    #         func_iter = zip(
-    #          repeat(params['func']), subj, scan, repeat(anat_out_dict),
-    #          repeat(output_dict), repeat(params['tr']),
-    #          repeat(params['slicetime']), repeat(params['trim'])
-    #         )
-    #         pool.starmap(func_full_proc, func_iter)
-    #     elif params['p_type'] == 'multiecho':
-    #         func_iter = zip(
-    #          repeat(params['func']), repeat(params['echo_times']),
-    #          subj, scan, repeat(anat_out_dict),
-    #          repeat(output_dict), repeat(params['tr']),
-    #          repeat(params['slicetime']), repeat(params['trim'])
-    #         )
-    #         pool.starmap(func_me_proc, func_iter)
-    #  # Minimal preprocessing pipeline - starting from preprocessed
-    # elif params['p_type'] == 'minimal':
-    #     func_iter = zip(repeat(params['func']), subj, scan, 
-    #                     repeat(output_dict), repeat(params['tr']), 
-    #                     repeat(True), repeat(params['smooth']))
-    #     pool.starmap(func_minimal_proc, func_iter)
+        # functional pipeline
+        if params['p_type'] == 'full':
+            func_iter = zip(
+             repeat(params['func']), subj, scan, repeat(anat_out_dict),
+             repeat(output_dict), repeat(params['tr']),
+             repeat(params['slicetime']), repeat(params['trim'])
+            )
+            pool.starmap(func_full_proc, func_iter)
+        elif params['p_type'] == 'multiecho':
+            func_iter = zip(
+             repeat(params['func']), repeat(params['echo_times']),
+             subj, scan, repeat(anat_out_dict),
+             repeat(output_dict), repeat(params['tr']),
+             repeat(params['slicetime']), repeat(params['trim'])
+            )
+            pool.starmap(func_me_proc, func_iter)
+     # Minimal preprocessing pipeline - starting from preprocessed
+    elif params['p_type'] == 'minimal':
+        func_iter = zip(repeat(params['func']), subj, scan, 
+                        repeat(output_dict), repeat(params['tr']), 
+                        repeat(True), repeat(params['smooth']))
+        pool.starmap(func_minimal_proc, func_iter)
 
-    # Physio preprocessing
-    if params['p_type'] == 'multiecho':
-        func_template = params['func']['func']
-    else:
-        func_template = params['func'] 
+    # # Physio preprocessing
+    # if params['p_type'] == 'multiecho':
+    #     func_template = params['func']['func']
+    # else:
+    #     func_template = params['func'] 
 
-    physio_iter = zip(
-      repeat(params['physio']), subj, scan, repeat(dataset), 
-      repeat(func_template), repeat(output_dict), 
-      repeat(params['resample_physio']), repeat(params['trim_physio']), 
-      repeat(params['resample_to_func']), repeat(no_eeglab)
-    )
-    pool.starmap(physio_proc, physio_iter)
+    # physio_iter = zip(
+    #   repeat(params['physio']), subj, scan, repeat(dataset), 
+    #   repeat(func_template), repeat(output_dict), 
+    #   repeat(params['resample_physio']), repeat(params['trim_physio']), 
+    #   repeat(params['resample_to_func']), repeat(no_eeglab)
+    # )
+    # pool.starmap(physio_proc, physio_iter)
 
 def tedana_denoise(fps_in, echo_times, mask, out_dir, out_prefix, 
                    fittype='curvefit'):
@@ -954,7 +976,7 @@ if __name__ == '__main__':
                         help='<Required> Dataset to preprocess - '
                         'to run all datasets use the arg "all"',
                         choices=['all', 'chang', 'chang_bh', 'chang_cue', 
-                                 'nki', 'hcp', 'spreng', 'yale', 
+                                 'nki', 'nki_rest', 'hcp', 'spreng', 'yale', 
                                  'natview'], 
                         required=True,
                         type=str)

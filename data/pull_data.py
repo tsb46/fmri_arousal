@@ -9,13 +9,10 @@ import shutil
 
 from botocore import UNSIGNED
 from botocore.client import Config
-# import downloader script provided NKI
-from dataset_nki.download_rockland_raw_bids_ver2 import collect_and_download as \
-    collect_and_download_nki
 
 
 # Datasets for download
-dataset = ['hcp', 'natview', 'nki', 'spreng', 'yale']
+dataset = ['hcp', 'natview', 'nki', 'nki_rest', 'spreng', 'yale']
 
 
 def download_hcp(subjects):
@@ -35,7 +32,6 @@ def download_hcp(subjects):
     # Load subject list and iterate through subjects
     for s, lr in zip(subjects.subject, subjects.lr):
         # Set up file path strings
-        print(s)
         # define base directories
         s_dir = f'HCP_1200/{s}/MNINonLinear/Results/rfMRI_REST1_{lr}'
 
@@ -51,73 +47,104 @@ def download_hcp(subjects):
 
 
 def download_nki(subjects, aws_links):
-    # Download subjects from NKI dataset via AWS
-    # Use downloader script provided by NKI
-    collect_and_download_nki('dataset_nki/aws_dir', aws_links)
-
+    # Pull NKI Rockland breath-hold sessions via AWS
     # Re-organize folders
     os.makedirs('dataset_nki/anat/raw', exist_ok=True)
     os.makedirs('dataset_nki/func/raw', exist_ok=True)
     os.makedirs('dataset_nki/physio/raw', exist_ok=True)
     os.makedirs('dataset_nki/events', exist_ok=True)
 
-    anat = lambda x, y: f'dataset_nki/aws_dir/sub-{x}/ses-{y}/anat/sub-{x}_ses-{y}_T1w'
-    func = lambda x, y: f'dataset_nki/aws_dir/sub-{x}/ses-{y}/func/sub-{x}_ses-{y}_task-BREATHHOLD_acq-1400_bold'
-    events = lambda x, y: f'dataset_nki/aws_dir/sub-{x}/ses-{y}/func/sub-{x}_ses-{y}_task-BREATHHOLD_acq-1400_events'
-    physio = lambda x, y: f'dataset_nki/aws_dir/sub-{x}/ses-{y}/func/sub-{x}_ses-{y}_task-BREATHHOLD_acq-1400_physio'
+    # Init variables
+    s3_bucket_name = 'fcp-indi'
+    s3_prefix = 'data/Projects/RocklandSample/RawDataBIDSLatest'
 
-    # loop through subjects and move to appopriate location
-    for subj in subjects.subject:
-        # structural
-        if os.path.exists(f'{anat(subj,"BAS1")}.json'):
-            os.rename(f'{anat(subj,"BAS1")}.nii.gz', 
-                      f'dataset_nki/anat/raw/{subj}_T1w.nii.gz')
-            os.rename(f'{anat(subj,"BAS1")}.json', 
-                      f'dataset_nki/anat/raw/{subj}_T1w.json')
-        else:
-            if os.path.exists(f'{anat(subj,"FLU2")}.json'):
-                os.rename(f'{anat(subj,"FLU2")}.nii.gz', 
-                          f'dataset_nki/anat/raw/{subj}_T1w.nii.gz')
-                os.rename(f'{anat(subj,"FLU2")}.json', 
-                          f'dataset_nki/anat/raw/{subj}_T1w.json')
-        # functional
-        if os.path.exists(f'{func(subj,"BAS1")}.json'):
-            os.rename(f'{func(subj,"BAS1")}.nii.gz', 
-                      f'dataset_nki/func/raw/{subj}_task_breathhold.nii.gz')
-            os.rename(f'{func(subj,"BAS1")}.json', 
-                      f'dataset_nki/func/raw/{subj}_task_breathold.json')
-        else:
-            if os.path.exists(f'{func(subj,"FLU2")}.json'):
-                os.rename(f'{func(subj,"FLU2")}.nii.gz', 
-                          f'dataset_nki/func/raw/{subj}_task_breathhold.nii.gz')
-                os.rename(f'{func(subj,"FLU2")}.json', 
-                          f'dataset_nki/func/raw/{subj}_task_breathhold.json')
-        # events
-        if os.path.exists(f'{events(subj,"BAS1")}.json'):
-            os.rename(f'{events(subj,"BAS1")}.tsv', 
-                      f'dataset_nki/events/{subj}_task_breathhold_events.tsv')
-            os.rename(f'{events(subj,"BAS1")}.json', 
-                      f'dataset_nki/events/{subj}_task_breathhold_events.json')
-        else:
-            if os.path.exists(f'{events(subj,"FLU2")}.json'):
-                os.rename(f'{events(subj,"FLU2")}.tsv', 
-                          f'dataset_nki/events/{subj}_task_breathhold_events.tsv')
-                os.rename(f'{events(subj,"FLU2")}.json', 
-                          f'dataset_nki/events/{subj}_task_breathhold_events.json')
-         # physio
-        if os.path.exists(f'{physio(subj,"BAS1")}.json'):
-            os.rename(f'{physio(subj,"BAS1")}.tsv.gz', 
-                      f'dataset_nki/physio/raw/{subj}_task_breathhold_physio.tsv.gz')
-            os.rename(f'{physio(subj,"BAS1")}.json', 
-                      f'dataset_nki/physio/raw/{subj}_task_breathhold_physio.json')
-        else:
-            if os.path.exists(f'{physio(subj,"FLU2")}.json'):
-                os.rename(f'{physio(subj,"FLU2")}.tsv.gz', 
-                          f'dataset_nki/physio/raw/{subj}_task_breathhold_physio.tsv.gz')
-                os.rename(f'{physio(subj,"FLU2")}.json', 
-                          f'dataset_nki/physio/raw/{subj}_task_breathhold_physio.json')
-    # Delete temporary aws folder
-    shutil.rmtree('dataset_nki/aws_dir')
+    # Set up S3 bucket
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(s3_bucket_name)
+    s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+    # Set up templates
+    anat_template = 'sub-{0}/ses-{1}/anat/sub-{0}_ses-{1}_T1w.nii.gz'
+    func_template = 'sub-{0}/ses-{1}/func/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_bold.nii.gz'
+    physio_template = 'sub-{0}/ses-{1}/func/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_physio.tsv.gz'
+    physio_json_template = 'sub-{0}/ses-{1}/func/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_physio.json'
+    event_template = 'sub-{0}/ses-{1}/func/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_events.tsv'
+
+    # iterate through subjects and download data
+    for s, ses in zip(subjects.subject, subjects.session):
+        # Pull anatomical file
+        anat_fp = anat_template.format(s, ses)
+        anat_in = f"{s3_prefix}/{anat_fp}"
+        anat_out = f"dataset_nki/anat/raw/sub-{s}_T1w.nii.gz"
+        bucket.download_file(anat_in, anat_out)
+        # Pull functional file
+        func_fp = func_template.format(s, ses)
+        func_in = f"{s3_prefix}/{func_fp}"
+        func_out = f"dataset_nki/func/raw/{os.path.basename(func_fp)}"
+        bucket.download_file(func_in, func_out)
+        # Pull physio file
+        physio_fp = physio_template.format(s, ses)
+        physio_in = f"{s3_prefix}/{physio_fp}"
+        physio_out = f"dataset_nki/physio/raw/{os.path.basename(physio_fp)}"
+        bucket.download_file(physio_in, physio_out)
+        # Pull physio json file
+        physio_json_fp = physio_json_template.format(s, ses)
+        physio_json_in = f"{s3_prefix}/{physio_json_fp}"
+        physio_json_out = f"dataset_nki/physio/raw/{os.path.basename(physio_json_fp)}"
+        bucket.download_file(physio_json_in, physio_json_out)
+        # Pull event file
+        event_fp = event_template.format(s, ses)
+        event_in = f"{s3_prefix}/{event_fp}"
+        event_out = f"dataset_nki/events/{os.path.basename(event_fp)}"
+        bucket.download_file(event_in, event_out)
+
+
+
+def download_nki_rest(subjects):
+    # Pull NKI Rockland resting-state sessions via AWS
+    # Create directories
+    os.makedirs('dataset_nki_rest/anat/raw', exist_ok=True)
+    os.makedirs('dataset_nki_rest/func/raw', exist_ok=True)
+    os.makedirs('dataset_nki_rest/physio/raw', exist_ok=True)
+
+    # Init variables
+    s3_bucket_name = 'fcp-indi'
+    s3_prefix = 'data/Projects/RocklandSample/RawDataBIDSLatest'
+
+    # Set up S3 bucket
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(s3_bucket_name)
+    s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
+    # Set up templates
+    anat_template = 'sub-{0}/ses-{1}/anat/sub-{0}_ses-{1}_T1w.nii.gz'
+    func_template = 'sub-{0}/ses-{1}/func/sub-{0}_ses-{1}_task-rest_acq-1400_bold.nii.gz'
+    physio_template = 'sub-{0}/ses-{1}/func/sub-{0}_ses-{1}_task-rest_acq-1400_physio.tsv.gz'
+    physio_json_template = 'sub-{0}/ses-{1}/func/sub-{0}_ses-{1}_task-rest_acq-1400_physio.json'
+
+
+    # iterate through subjects and download data
+    for s, ses in zip(subjects.subject, subjects.session):
+        # Pull anatomical file
+        anat_fp = anat_template.format(s, ses)
+        anat_in = f"{s3_prefix}/{anat_fp}"
+        anat_out = f"dataset_nki_rest/anat/raw/sub-{s}_T1w.nii.gz"
+        bucket.download_file(anat_in, anat_out)
+        # Pull functional file
+        func_fp = func_template.format(s, ses)
+        func_in = f"{s3_prefix}/{func_fp}"
+        func_out = f"dataset_nki_rest/func/raw/{os.path.basename(func_fp)}"
+        bucket.download_file(func_in, func_out)
+        # Pull physio file
+        physio_fp = physio_template.format(s, ses)
+        physio_in = f"{s3_prefix}/{physio_fp}"
+        physio_out = f"dataset_nki_rest/physio/raw/{os.path.basename(physio_fp)}"
+        bucket.download_file(physio_in, physio_out)
+        # Pull physio json file
+        physio_json_fp = physio_json_template.format(s, ses)
+        physio_json_in = f"{s3_prefix}/{physio_json_fp}"
+        physio_json_out = f"dataset_nki_rest/physio/raw/{os.path.basename(physio_json_fp)}"
+        bucket.download_file(physio_json_in, physio_json_out)
 
 
 def download_natview(subjects):
@@ -307,19 +334,22 @@ def pull_data(dataset):
     if dataset == 'hcp':
         subjects = pd.read_csv('dataset_hcp/subject_list_hcp.csv')
         download_hcp(subjects)
+    elif dataset == 'natview':
+        subjects = pd.read_csv('dataset_natview/subject_list_natview.csv')
+        download_natview(subjects)
     elif dataset == 'nki':
         subjects = pd.read_csv('dataset_nki/subject_list_nki.csv')
         aws_links = 'dataset_nki/aws_links_sample.csv'
         download_nki(subjects, aws_links)
+    elif dataset == 'nki_rest':
+        subjects = pd.read_csv('dataset_nki_rest/subject_list_nki_rest.csv')
+        download_nki_rest(subjects)
     elif dataset == 'spreng':
         subjects = pd.read_csv('dataset_spreng/subject_list_spreng.csv')
         download_spreng(subjects)
     elif dataset == 'yale': 
         subjects = pd.read_csv('dataset_yale/subject_list_yale.csv')
         download_yale(subjects)
-    elif dataset == 'natview':
-        subjects = pd.read_csv('dataset_natview/subject_list_natview.csv')
-        download_natview(subjects)
 
 
 if __name__ == '__main__':
@@ -328,8 +358,8 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to pull from AWS - '
                         'to run all datasets use the arg "all"',
-                        choices=['all', 'nki', 'hcp', 'spreng', 
-                                 'yale', 'natview'], 
+                        choices=['all', 'hcp', 'natview', 'nki',
+                                 'nki_rest', 'spreng', 'yale'], 
                         required=True,
                         type=str)
     args_dict = vars(parser.parse_args())

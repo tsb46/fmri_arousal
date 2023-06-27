@@ -219,7 +219,10 @@ def load_subject_list(dataset, subject_list_fp):
         scan = subj_df.scan.tolist()
     elif dataset == 'nki': 
         subj = subj_df.subject.tolist()
-        scan = [None] * len(subj)
+        scan = subj_df.session.tolist()
+    elif dataset == 'nki_rest': 
+        subj = subj_df.subject.tolist()
+        scan = subj_df.session.tolist()
     elif dataset == 'spreng':
         subj = subj_df.subject.tolist()
         scan = subj_df.scan.tolist()
