@@ -60,8 +60,8 @@ def download_nki(subjects, aws_links):
 
     # Set up S3 bucket
     s3 = boto3.resource('s3')
+    s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
     bucket = s3.Bucket(s3_bucket_name)
-    s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
     # Set up templates
     anat_template = 'sub-{0}/ses-{1}/anat/sub-{0}_ses-{1}_T1w.nii.gz'
@@ -113,8 +113,8 @@ def download_nki_rest(subjects):
 
     # Set up S3 bucket
     s3 = boto3.resource('s3')
+    s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
     bucket = s3.Bucket(s3_bucket_name)
-    s3_client = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 
     # Set up templates
     anat_template = 'sub-{0}/ses-{1}/anat/sub-{0}_ses-{1}_T1w.nii.gz'
