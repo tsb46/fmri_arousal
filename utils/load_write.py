@@ -262,8 +262,3 @@ def write_nifti(data, output_file, zero_mask, orig_n_vert):
     nifti_out = nb.Nifti2Image(nifti_4d, mask_nii.affine)
     nb.save(nifti_out, output_file)
 
-
-
-
-    
-

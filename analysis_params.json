@@ -42,7 +42,7 @@
 		"nscans": 33,
 		"eeg": "data/dataset_natview/eeg/proc1_eeg/sub-{0}_ses-0{1}_task-rest_eeg.raw.fif",
 		"func": "data/dataset_natview/func/proc5_bandpass/sub-{0}_ses-0{1}_task-rest_bold.nii.gz",
-		"physio": "data/dataset_natview/physio/raw/sub-{0}_ses-0{1}_task-rest_physio_{2}_filt.txt"
+		"physio": "data/dataset_natview/physio/proc1_physio/sub-{0}_ses-0{1}_task-rest_physio_{2}_filt.txt"
 	},
 	"nki": {
 		"subject_list": "data/dataset_nki/subject_list_nki.csv",
@@ -57,8 +57,8 @@
 		"tr": 3,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP"],
 		"nscans": 165,
-		"func": "data/dataset_spreng/func/proc3_bandpass/{0}_task-rest_{1}_echo-123_bold_medn_afw.nii.gz",
-		"physio": "data/dataset_spreng/physio/proc1_physio/{0}_task-rest_{1}_physio_{2}_filt.txt"
+		"func": "data/dataset_spreng/func/proc6_bandpass/{0}_{1}_task-rest_bold.nii.gz",
+		"physio": "data/dataset_spreng/physio/proc1_physio/{0}_{1}_task-rest_physio_{2}_filt.txt"
 	},
 	"yale": {
 		"subject_list": "data/dataset_yale/subject_list_yale.csv",

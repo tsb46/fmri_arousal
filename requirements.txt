@@ -10,7 +10,7 @@ nibabel==3.2.2
 nilearn==0.9.1
 nipype==1.8.6
 numpy==1.24.3
-openneuro-py==2022.2.0
+openneuro-py==2022.4.0
 pandas==1.4.1
 patsy==0.5.2
 scikit_learn==1.1.3

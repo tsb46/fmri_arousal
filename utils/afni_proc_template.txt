@@ -1,0 +1,7 @@
+afni_proc.py                                                             \
+            -subj_id                {0}                                  \
+            -blocks                 {1}                                  \
+            -dsets_me_run           {2}                                  \
+            -echo_times             {3}                                  \
+            -tcat_remove_first_trs  {4}                                  \
+            -out_dir                {5}                                  \
