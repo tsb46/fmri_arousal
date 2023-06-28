@@ -422,7 +422,7 @@ def get_anat_fp(fp, subj_list, output_dict):
             'flirt_mat': f"{output_dict['anat']['flirt']}/{fp_base}_flirt.mat",
             'fnirt_coef': f"{output_dict['anat']['fnirt']}/{fp_base}_fn_coef.nii.gz"
         }
-        anat_out[s] = anat_out_subj
+        anat_out[subj] = anat_out_subj
     return anat_out
 
 
