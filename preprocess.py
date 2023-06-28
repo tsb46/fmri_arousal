@@ -407,6 +407,25 @@ def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, output_dict,
     func_minimal_proc(fp_func, subj, scan, output_dict, tr, resample=False, smooth=True)
 
 
+def get_anat_fp(fp, subj_list, output_dict):
+    # get file paths to anatomical outputs necessary
+    # for preprocessing functional scans
+    anat_out = {}
+    for subj in subj_list:
+        fp = fp.format(subj)
+        fp_base = get_fp_base(fp)
+        fp_fast_base = get_fp_base(f"{output_dict['anat']['fast']}/{fp}")
+        anat_out_subj = {
+            'reorient': f"{output_dict['anat']['reorient']}/{fp}",
+            'bet': f"{output_dict['anat']['bet']}/{fp}",
+            'wm': f'{fp_fast_base}_pve_2_thres.nii.gz',
+            'flirt_mat': f"{output_dict['anat']['flirt']}/{fp_base}_flirt.mat",
+            'fnirt_coef': f"{output_dict['anat']['fnirt']}/{fp_base}_fn_coef.nii.gz"
+        }
+        anat_out[s] = anat_out_subj
+    return anat_out
+
+
 def get_fp(dataset):
     # set filepath templates for raw data
     if dataset == 'chang':
@@ -782,7 +801,7 @@ def physio_proc(fp, subj, scan, dataset, fp_func,
         np.savetxt(f'{fp_out}_{col}_filt.txt', physio_out_filt[col].values)
 
 
-def preprocess(dataset, n_cores, no_eeglab):
+def preprocess(dataset, n_cores, anat_skip, no_eeglab):
     # master function for preprocessing datasets
     print(f'preprocessing {dataset}')
     # load analysis_params.json to get dataset tr
@@ -904,11 +923,12 @@ def preprocess(dataset, n_cores, no_eeglab):
     params['func'], params['anat'], params['physio'] = get_fp(dataset)
     # apply preprocessing pipeline (possibly in parallel)
     preprocess_map(
-        subj, scan, params, output_dict, dataset, no_eeglab
+        subj, scan, params, output_dict, dataset, anat_skip, no_eeglab
     )
 
 
-def preprocess_map(subj, scan, params, output_dict, dataset, no_eeglab):
+def preprocess_map(subj, scan, params, output_dict, dataset, 
+                   anat_skip, no_eeglab):
     # apply preprocessing pipeline to each subject in parallel
     pool = Pool(processes=params['n_cores'])
     # Full preprocessing pipeline - starting from raw
@@ -916,12 +936,16 @@ def preprocess_map(subj, scan, params, output_dict, dataset, no_eeglab):
         # anatomical pipeline
         # get unique subj ids while preserving order
         subj_unq = list(dict.fromkeys(subj))
-        # Apply anatomical pipeline to structural scans (possibly in parallel)
-        anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict),
-                     repeat(params['robustfov']))
-        anat_out = pool.starmap(anat_proc, anat_iter)
-        # convert anat output to dict with subj id as keys
-        anat_out_dict = {a[0]: a[1] for a in anat_out}
+        # skip, if specified
+        if anat_skip:
+            anat_out_dict = get_anat_fp(params['anat'], subj_unq, output_dict)
+        else:
+            # Apply anatomical pipeline to structural scans (possibly in parallel)
+            anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict),
+                         repeat(params['robustfov']))
+            anat_out = pool.starmap(anat_proc, anat_iter)
+            # convert anat output to dict with subj id as keys
+            anat_out_dict = {a[0]: a[1] for a in anat_out}
 
         # functional pipeline
         if params['p_type'] == 'full':
@@ -985,6 +1009,10 @@ if __name__ == '__main__':
                         default = 1,
                         required=False,
                         type=int)
+    parser.add_argument('-anat_skip', '--anat_skip',
+                        help='whether to run function preprocessing without'
+                        ' having to re-run anatomical pipeline',
+                        action='store_true')
     parser.add_argument('-no_eeglab', '--no_eeglab',
                         help='Whether to skip eeglab preprocessing for natview dataset',
                         action='store_true')
@@ -996,7 +1024,7 @@ if __name__ == '__main__':
             preprocess(d, args_dict['n_cores'], args_dict['no_eeglab'])
     else:
         preprocess(args_dict['dataset'], args_dict['n_cores'], 
-                   args_dict['no_eeglab'])
+                   args_dict['anat_skip'], args_dict['no_eeglab'])
 
 
 
