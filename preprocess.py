@@ -308,7 +308,7 @@ def func_full_proc(fp, subj, scan, anat_out_dict, output_dict, tr,
         trim_vol(fp_in, fp_trim, trim)
         fp_in = fp_trim
     # if specified, slicetime correct
-    if slicetime:
+    if slicetime is not None:
         fp_slicetime = f"{output_dict['func']['slicetime']}/{fp}"
         slicetime(fp_in, fp_slicetime, slice_timing, tr)
         fp_in = fp_slicetime
