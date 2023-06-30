@@ -89,7 +89,9 @@ def extract_eeg_signals(eeg, sf):
 
 
 def extract_gsr_signals(ts, sf, bp_filt=[0.01, 0.1]):
-    ts_filt = butterworth_filter(ts, bp_filt[0], bp_filt[1], sf, 'bandpass') 
+    # extract tonic skin conductance from electrodermal recordings
+    ts_detrend = nk.signal_detrend(ts, method='polynomial', order=3)
+    ts_filt = butterworth_filter(ts_detrend, bp_filt[0], bp_filt[1], sf, 'bandpass')
     return pd.DataFrame({'GSR': ts_filt[:,0]})
 
 
