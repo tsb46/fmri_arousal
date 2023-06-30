@@ -72,15 +72,14 @@ if __name__ == '__main__':
                         help='<Required> Dataset to run analysis on',
                         choices=['chang', 'chang_bh', 'change_cue', 
                         		 'nki', 'yale', 'hcp', 'spreng', 
-                        		 'natview'], 
+                        		 'natview', 'nki_rest'], 
                         required=True,
                         type=str)
 	parser.add_argument('-p', '--physio',
 						help='select physio',
 						required=True,
 						choices=['PPG_HR', 'ECG_HR', 'PPG_PEAK_AMP', 'PPG_LOW', 
-                                 'RSP_RVT', 'GSR', 'ALPHA', 'THETA', 'DELTA', 
-                                 'PUPIL'],
+                                 'RSP_RVT', 'GSR', 'PUPIL'],
 						default=None,
 						type=str)
 	parser.add_argument('-lw', '--left_window_size',

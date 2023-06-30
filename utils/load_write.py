@@ -149,7 +149,9 @@ def load_group_func(fps, mask_bin, group_method, params, regress_global):
         subj_data = load_subject_func(fp, mask_bin, regress_global)
         subj_t = subj_data.shape[0]
         # Normalize data before concatenation
-        subj_data = zscore(subj_data)
+        subj_data = zscore(subj_data, nan_policy='omit')
+        # fill nans w/ 0 in regions of poor functional scan coverage
+        subj_data = np.nan_to_num(subj_data)
         if group_method == 'stack':
             group_data[indx:(indx+subj_t), :] = subj_data
             indx += subj_t
@@ -176,7 +178,8 @@ def load_group_physio(fps, group_method):
 
 def load_nki_event_file():
     # We are ASSUMING that the event timings are the same across all subjects (e.g. no counterbalancing)
-    events = pd.read_csv('data/dataset_nki/events/A00057406_task_breathhold_events.tsv', sep='\t')
+    events = pd.read_csv('data/dataset_nki/events/sub-A00057406_ses-BAS1_task-BREATHHOLD_acq-1400_events.tsv', 
+                         sep='\t')
     return events
 
 

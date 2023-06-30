@@ -674,7 +674,7 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim, no_eeglab)
  
         return physio, sf_dict
     # load nki or spreng physio
-    elif (dataset == 'nki') | (dataset == 'spreng'):
+    elif (dataset == 'nki') | (dataset == 'nki_rest') | (dataset == 'spreng'):
         # get file path and load
         fp_p = fp['physio'].format(subj, scan)
         fp_p_in = f"{output_dict['physio']['raw']}/{fp_p}"
@@ -685,13 +685,17 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim, no_eeglab)
         # load json and set columns
         physio_json = json.load(open(f'{fp_json}.json'))
         physio_df.columns = physio_json['Columns']
+        # If nki dataset, trim off extra signals after last trigger
+        if (dataset == 'nki') | (dataset == 'nki_rest'):
+            last_trigger = physio_df.loc[physio_df['trigger'] == 5].index[-1]
+            physio_df = physio_df.iloc[:last_trigger, :].copy()
         physio = {
             'ppg': physio_df['cardiac'].values, 
             'resp': physio_df['respiratory'].values
         }
         sf = physio_json["SamplingFrequency"]
         sf_dict = {'ppg': sf, 'resp': sf}
-        if dataset == 'nki':
+        if (dataset == 'nki') | (dataset == 'nki_rest'):
             physio['gsr'] = physio_df['gsr'].values
             sf_dict['gsr'] = sf
     # load yale physio
@@ -970,19 +974,22 @@ def preprocess_map(subj, scan, params, output_dict, dataset,
                         repeat(True), repeat(params['smooth']))
         pool.starmap(func_minimal_proc, func_iter)
 
-    # # Physio preprocessing
-    # if params['p_type'] == 'multiecho':
-    #     func_template = params['func']['func']
-    # else:
-    #     func_template = params['func'] 
+    # Physio preprocessing
+    if params['p_type'] == 'multiecho':
+        func_template = params['func']['func']
+    else:
+        func_template = params['func'] 
 
-    # physio_iter = zip(
-    #   repeat(params['physio']), subj, scan, repeat(dataset), 
-    #   repeat(func_template), repeat(output_dict), 
-    #   repeat(params['resample_physio']), repeat(params['trim_physio']), 
-    #   repeat(params['resample_to_func']), repeat(no_eeglab)
-    # )
-    # pool.starmap(physio_proc, physio_iter)
+    physio_iter = zip(
+      repeat(params['physio']), subj, scan, repeat(dataset), 
+      repeat(func_template), repeat(output_dict), 
+      repeat(params['resample_physio']), repeat(params['trim_physio']), 
+      repeat(params['resample_to_func']), repeat(no_eeglab)
+    )
+    pool.starmap(physio_proc, physio_iter)
+    # physio_proc(params['physio'], subj[0], scan[0], dataset,
+    #             func_template, output_dict, params['resample_physio'], 
+    #             params['trim_physio'], params['resample_to_func'], no_eeglab)
 
 def tedana_denoise(fps_in, echo_times, mask, out_dir, out_prefix, 
                    fittype='curvefit'):
