@@ -49,16 +49,16 @@
 		"tr": 1.4,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP", "GSR"],
 		"nscans": 50,
-		"func": "data/dataset_nki/func/proc5_bandpass/{0}_task_breathhold.nii.gz",
-		"physio": "data/dataset_nki/physio/proc1_physio/{0}_task_breathhold_physio_{1}_filt.txt"
+		"func": "data/dataset_nki/func/proc5_bandpass/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_bold.nii.gz",
+		"physio": "data/dataset_nki/physio/proc1_physio/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_physio_{2}_filt.txt"
 	},
 	"nki_rest": {
 		"subject_list": "data/dataset_nki_rest/subject_list_nki_rest.csv",
 		"tr": 1.4,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP", "GSR"],
-		"nscans": 63,
-		"func": "data/dataset_nki_rest/func/proc5_bandpass/{0}_task_breathhold.nii.gz",
-		"physio": "data/dataset_nki_rest/physio/proc1_physio/{0}_task_breathhold_physio_{1}_filt.txt"
+		"nscans": 62,
+		"func": "data/dataset_nki_rest/func/proc5_bandpass/sub-{0}_ses-{1}_task-rest_acq-1400_bold.nii.gz",
+		"physio": "data/dataset_nki_rest/physio/proc1_physio/sub-{0}_ses-{1}_task-rest_acq-1400_physio_{2}_filt.txt"
 	},
 	"spreng": {
 		"subject_list": "data/dataset_spreng/subject_list_spreng.csv", 
