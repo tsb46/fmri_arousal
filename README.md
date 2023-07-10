@@ -17,6 +17,13 @@ pip install -r requirements.txt
 ## FSL
 The preprocessing script uses Nipype to call FSL utilities. Ensure that FSL is available from your command-line. Our study used FSL 5.0.9.
 
+## AFNI
+
+**Note: AFNI is only needed for preprocessing of the SPRENG dataset.**
+
+The SPRENG dataset ('ME-REST-SUPP' in manuscript) requires the afni_proc.py script for multi-echo fMRI preprocessing. If preprocessing the SPRENG dataset, ensure that afni_proc.py script is available from your command-line (which is made available through the standard AFNI installation).  Our study used AFNI 21.3.01. 
+
+
 ## MATLAB and EEGLAB
 
 **Note: MATLAB is only needed for preprocessing of the NATVIEW dataset.**
@@ -36,7 +43,7 @@ The MATLAB engine API puts constraints on the Python version that can be used (s
 If you are using the standalone MATLAB script (see above), you place the EEGLAB directory in any location, provided that it is added to the MATLAB path before running the script.
 
 # Get Data
-Most datasets for this study are publically available (excluding the 'chang', 'chang_bh', 'chang_cue' datasets, but hosting solutions are being explored). A data pull utility is provided for half of the datasets (see below). At present, the others will need to manually requested/downloaded and placed into their appropriate location in the [data](data/) directory. 
+Most datasets for this study are publically available (excluding the 'chang', 'chang_bh', 'chang_cue' datasets, but hosting solutions are being explored). A data pull utility is provided for most of the datasets (see below). At present, the others will need to manually requested/downloaded and placed into their appropriate location in the [data](data/) directory. 
 
 Below is a table of the datasets used in the study. For each dataset, their repo label (the label used in the code), their manuscript label, their tasks, a documentation/manuscript link, the format they are downloaded in (raw vs. preprocessed; i.e. where the preprocessing starts from), and whether they are pulled in the data pull utility script:
 
@@ -49,7 +56,8 @@ Below is a table of the datasets used in the study. For each dataset, their repo
 |        hcp           | HCP-REST     | Resting-state              | [link](https://www.humanconnectome.org/study/hcp-young-adult)      | :white_check_mark: | preprocessed |
 |        natview       | NATVIEW-REST | Resting-state              | [link](https://www.biorxiv.org/content/10.1101/2022.11.23.517540v1)| :white_check_mark: | raw          |
 |        nki           | NKI-TASK     | Breath Hold                | [link](http://fcon_1000.projects.nitrc.org/indi/enhanced/)         | :white_check_mark: | raw          |
-|        spreng        | ME-REST-SUPP | Resting-state              | [link](https://openneuro.org/datasets/ds003592/versions/1.0.13)    |                    | preprocessed |
+|        nki_rest      | NKI-REST     | Resting-state              | [link](http://fcon_1000.projects.nitrc.org/indi/enhanced/)         | :white_check_mark: | raw          |
+|        spreng        | ME-REST-SUPP | Resting-state              | [link](https://openneuro.org/datasets/ds003592/versions/1.0.13)    | :white_check_mark: | raw          |
 |        yale          | YALE-REST    | Resting-state              | [link](https://openneuro.org/datasets/ds003673/versions/2.0.1)     | :white_check_mark: | raw          |
 
 To pull the hcp, natview, nki and yale datasets, move into the [data](data/) directory and run the following command-line Python script:
@@ -99,7 +107,8 @@ datasets = [
 	'chang_bh', 
 	'chang_cue', 
 	'natview',
-	'nki', 
+	'nki',
+	'nki_rest',
 	'hcp', 
 	'spreng', 
 	'yale'
