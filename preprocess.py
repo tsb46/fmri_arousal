@@ -50,7 +50,7 @@ natview_eeg_chan = ['P3', 'P4', 'P7', 'P8', 'Pz', 'POz',
                     'PO7', 'PO8', 'O1', 'O2', 'Oz']
 
 def afni_proc(fp_echo, fp_func_base, echo_times, 
-              afni_base_dir, slicetime, trim):
+              afni_base_dir, slice_timing, trim):
     # function-scoped import to avoid importing unless pipeline is called
     from nipype.interfaces import afni
     n_echos = len(echo_times)
@@ -60,7 +60,7 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
         afni_template = f.read()
     blocks = []
     # determine blocks to pass to afni_proc.py
-    if slicetime:
+    if slice_timing:
         blocks += ['tshift']
         pb = '02' # needed for specify output BRIK path for echo
         pb_comb = '03' # needed for specify output BRIK path for optcomb
@@ -161,7 +161,7 @@ def convert_afni_to_nii(fp_in, fp_out):
     a2n.run()
 
 
-def create_directories(dataset, p_type, eeg, slicetime=None, trim=None):
+def create_directories(dataset, p_type, eeg, slice_time=None, trim=None):
     # create directories for preprocessing
     if (p_type == 'full') | (p_type == 'multiecho'):
         output_dict = {
@@ -372,7 +372,7 @@ def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, output_dict,
     afni_base_dir = f"{output_dict['func']['afni']}"
     # run afni_proc.py preprocessing (slicetime, align)
     fps_afni, fp_optcomb = afni_proc(
-        fp_in, fp_func_base, echo_times, afni_base_dir, slicetime, trim
+        fp_in, fp_func_base, echo_times, afni_base_dir, slice_timing, trim
     )
     # epi coregistration
     # first, convert combopt .BRIK to nifti
@@ -716,36 +716,17 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim, no_eeglab)
             if trim is not None:
                 sf_trim = sf_dict[p]
                 trim_n = int(sf_trim*trim)
-                if p == 'bp':
-                    physio[p] = [physio[p][0][trim_n:], physio[p][1][trim_n:]]
-                else:
-                    physio[p] = physio[p][trim_n:]
+                physio[p] = physio[p][trim_n:]
             # to ease computational burden, some high-frequency 
             # physio signals are downsampled before pre-processing
             if resample is not None:
                 sf_resamp = sf_dict[p]
-                if p == 'bp':
-                    physio[p] = [
-                        nk.signal_resample(
-                            physio[p][0], 
-                            sampling_rate=sf_resamp, 
-                            desired_sampling_rate=resample, 
-                            method='FFT'
-                        ),
-                        nk.signal_resample(
-                            physio[p][1], 
-                            sampling_rate=sf_resamp, 
-                            desired_sampling_rate=resample, 
-                            method='FFT'
+                physio[p] = nk.signal_resample(
+                           physio[p], 
+                           sampling_rate=sf_resamp, 
+                           desired_sampling_rate=resample, 
+                           method='FFT'
                         )
-                    ]
-                else:
-                    physio[p] = nk.signal_resample(
-                               physio[p], 
-                               sampling_rate=sf_resamp, 
-                               desired_sampling_rate=resample, 
-                               method='FFT'
-                            )
                 # set resample freq as new freq (sf)
                 sf_dict[p] = resample                
         
