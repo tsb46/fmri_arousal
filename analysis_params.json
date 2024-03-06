@@ -5,6 +5,7 @@
 		"tr": 2.1,
 		"physio_labels": ["PPG_HR", "PPG_PEAK_AMP", "PPG_LOW", "RSP_RVT", "ALPHA", "DELTA", "THETA"],
 		"nscans": 14,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_chang/func/proc3_bandpass/sub_00{0}-mr_{1}-ecr_echo1_w_dspk_blur3mm.nii.gz",
 		"eeg": "data/dataset_chang/eeg/proc1_eeg/sub_00{0}-mr_{1}_eeg_pp.raw.fif",
 		"physio": "data/dataset_chang/physio/proc1_physio/sub_00{0}-mr_{1}-ecr_physio_{2}_filt.txt"
@@ -14,6 +15,7 @@
 		"tr": 2.1,
 		"physio_labels": ["PPG_HR", "PPG_PEAK_AMP", "PPG_LOW", "RSP_RVT", "ALPHA", "DELTA", "THETA"],
 		"nscans": 8,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_chang_bh/func/proc3_bandpass/sub_00{0}-mr_{1}-adb_echo1_w_dspk_blur3mm.nii.gz",
 		"eeg": "data/dataset_chang_bh/eeg/proc1_eeg/sub_00{0}-mr_{1}-adb_echo1_EEG_pp.raw.fif",
 		"physio": "data/dataset_chang_bh/physio/proc1_physio/sub_00{0}-mr_{1}-adb_physio_{2}_filt.txt"
@@ -22,16 +24,18 @@
 		"subject_list": "data/dataset_chang_cue/subject_list_chang_cue.csv",
 		"tr": 2.1,
 		"physio_labels": ["PPG_HR", "PPG_PEAK_AMP", "PPG_LOW", "RSP_RVT", "ALPHA", "DELTA", "THETA"],
-		"nscans": 7,
-		"func": "data/dataset_chang_cue/func/proc3_bandpass/sub_00{0}-mr_{1}-ectp_echo1_w_dspk_dtr_blur3mm.nii.gz",
-		"eeg": "data/dataset_chang_cue/eeg/proc1_eeg/sub_00{0}-mr_{1}-ectp_echo1_EEG_pp.raw.fif",
-		"physio": "data/dataset_chang_cue/physio/proc1_physio/sub_00{0}-mr_{1}-ectp_physio_{2}_filt.txt"
+		"nscans": 12,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
+		"func": "data/dataset_chang_cue/func/proc3_bandpass/sub_{0}-mr_{1}-ect_echo1_w_dspk_blur3mm.nii.gz",
+		"eeg": "data/dataset_chang_cue/eeg/proc1_eeg/sub_{0}-mr_{1}-ect_echo1_EEG_pp.raw.fif",
+		"physio": "data/dataset_chang_cue/physio/proc1_physio/sub_{0}-mr_{1}-ect_physio_{2}_filt.txt"
 	},
 	"hcp": {
 		"subject_list": "data/dataset_hcp/subject_list_hcp.csv",
 		"tr": 0.72,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP"],
 		"nscans": 30,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_hcp/func/proc3_bandpass/{0}_{1}_hp2000_clean.nii.gz",
 		"physio": "data/dataset_hcp/physio/proc1_physio/{0}_{1}_physio_{2}_filt.txt"
 	},
@@ -40,6 +44,7 @@
 		"tr": 2.1,
 		"physio_labels": ["ECG_HR", "RSP_RVT", "ALPHA", "DELTA", "THETA", "PUPIL"],
 		"nscans": 33,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"eeg": "data/dataset_natview/eeg/proc1_eeg/sub-{0}_ses-0{1}_task-rest_eeg.raw.fif",
 		"func": "data/dataset_natview/func/proc5_bandpass/sub-{0}_ses-0{1}_task-rest_bold.nii.gz",
 		"physio": "data/dataset_natview/physio/proc1_physio/sub-{0}_ses-0{1}_task-rest_physio_{2}_filt.txt"
@@ -49,6 +54,7 @@
 		"tr": 1.4,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP", "GSR"],
 		"nscans": 50,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_nki/func/proc5_bandpass/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_bold.nii.gz",
 		"physio": "data/dataset_nki/physio/proc1_physio/sub-{0}_ses-{1}_task-BREATHHOLD_acq-1400_physio_{2}_filt.txt"
 	},
@@ -57,6 +63,7 @@
 		"tr": 1.4,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP", "GSR"],
 		"nscans": 62,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_nki_rest/func/proc5_bandpass/sub-{0}_ses-{1}_task-rest_acq-1400_bold.nii.gz",
 		"physio": "data/dataset_nki_rest/physio/proc1_physio/sub-{0}_ses-{1}_task-rest_acq-1400_physio_{2}_filt.txt"
 	},
@@ -65,14 +72,25 @@
 		"tr": 3,
 		"physio_labels": ["RSP_RVT", "PPG_HR", "PPG_LOW", "PPG_PEAK_AMP"],
 		"nscans": 165,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_spreng/func/proc6_bandpass/{0}_{1}_task-rest_bold.nii.gz",
 		"physio": "data/dataset_spreng/physio/proc1_physio/{0}_{1}_task-rest_physio_{2}_filt.txt"
+	},
+	"toronto": {
+		"subject_list": "data/dataset_toronto/subject_list_toronto.csv", 
+		"tr": 0.38,
+		"physio_labels": ["RSP_RVT"],
+		"nscans": 25,
+		"mask": "masks/MNI152_T1_4mm_brain_mask.nii.gz",
+		"func": "data/dataset_toronto/func/proc5_bandpass/{0}_rest_bold_{1}.nii.gz",
+		"physio": "data/dataset_toronto/physio/proc1_physio/{0}_rest_bold_{1}_physio_{2}_filt.txt"
 	},
 	"yale": {
 		"subject_list": "data/dataset_yale/subject_list_yale.csv",
 		"tr": 1,
 		"physio_labels": ["PUPIL"],
 		"nscans": 54,
+		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_yale/func/proc5_bandpass/{0}_task-rest_run-0{1}_bold.nii.gz",
 		"physio": "data/dataset_yale/physio/proc1_physio/{0}_task-rest_run-0{1}_physio_{2}_filt.txt"
 	}

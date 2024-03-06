@@ -33,9 +33,9 @@ def apply_transform_mask(fp, fp_out, ref, mat):
     # move to results directory
     os.remove(applyxfm_res.outputs.out_matrix_file)
 
-def bet(fp, fp_out):
+def bet(fp, fp_out, frac=None):
     # BET - Skullstrip anatomical Image
-    bet_anat = fsl.BET(frac=0.25, robust=True, mask=True)
+    bet_anat = fsl.BET(frac=frac, robust=True, mask=True)
     bet_anat.inputs.in_file = fp
     bet_anat.inputs.out_file = fp_out
     bet_anat_res = bet_anat.run()

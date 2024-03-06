@@ -38,16 +38,16 @@ def reconstruct_ts(pca_res, n, rotation, real=True):
     return recon_ts
 
 
-def write_results(dataset,recon_comp, n_comp, zero_mask, n_vert, out_dir):
+def write_results(dataset,recon_comp, n_comp, params, out_dir):
     # write results of cpca reconstruction
     if out_dir is not None:
         analysis_str = f'{out_dir}/{dataset}_cpca_recon_n{n_comp}'
     else:
         analysis_str = f'{dataset}_cpca_recon_n{n_comp}'
-    write_nifti(recon_comp, analysis_str, zero_mask, n_vert)
+    write_nifti(recon_comp, analysis_str, params)
 
 
-def cpca_recon(dataset, cpca_res, n_recon, rotation, zero_mask, n_vert,
+def cpca_recon(dataset, cpca_res, n_recon, rotation, params,
                out_dir=None, n_bins=30):
     # reconstruct cpca component 'movies' from cpca results
     bin_indx_all = []
@@ -62,7 +62,7 @@ def cpca_recon(dataset, cpca_res, n_recon, rotation, zero_mask, n_vert,
         # average time courses within bins
         dynamic_phase_map = create_dynamic_phase_maps(recon_ts, bin_indx, n_bins)
         bin_indx_all.append(bin_indx); bin_centers_all.append(bin_centers)
-        write_results(dataset, dynamic_phase_map, n, zero_mask, n_vert, out_dir)
+        write_results(dataset, dynamic_phase_map, n, params, out_dir)
     if out_dir is not None:
         pkl_out = f'{out_dir}/{dataset}_cpca_recon_results.pkl'
     else:

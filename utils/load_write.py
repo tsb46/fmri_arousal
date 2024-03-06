@@ -13,7 +13,7 @@ from utils.signal_utils import butterworth_filter
 params_fp='analysis_params.json'
 
 # Dilated mask that includes sinuses slightly outside gray matter tissue
-mask="masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz"
+mask_3mm="masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz"
 
 
 def convert_2d(mask_bin, nifti_data):
@@ -104,10 +104,15 @@ def load_chang_bh_event_file():
     return events
 
 
-def load_chang_cue_event_file():
-    # We are ASSUMING that the event timings are the same across all subjects 
-    events = np.loadtxt(f'data/dataset_chang_cue/ectp_onsets.txt')
-    return events
+def load_chang_cue_event_file(subj, scan):
+    # load cue onset and reaction time for a scan in reaction time task
+    task_mat = loadmat(
+        f'data/dataset_chang_cue/events/sub_{subj}-mr_{scan}-ect_echo1_taskOUT.mat',
+        squeeze_me=True
+    )
+    cue = task_mat['OUT']['stimTime_msec'].item()
+    rt = task_mat['OUT']['RT_msec'].item()
+    return cue, rt
 
 
 def load_data(dataset, physio, group_method='stack', 
@@ -115,17 +120,17 @@ def load_data(dataset, physio, group_method='stack',
               regress_global=False):
     # master function for loading and concatenating functional/physio files
     params = load_params()
-    params_data = params[dataset]
+    params_d = params[dataset]
 
     # Load mask
-    mask_bin = nb.load(mask).get_fdata() > 0
+    mask_bin = nb.load(params_d['mask']).get_fdata() > 0
 
     # Pull file paths
-    fps = find_fps(dataset, physio, params_data)
+    fps = find_fps(dataset, physio, params_d)
 
     # Pull data for group level analysis
     func_data = load_group_func(fps['func'], mask_bin, group_method, 
-                                params_data, regress_global)
+                                params_d, regress_global)
     if physio is not None:
         physio_sig = load_group_physio(fps['physio'], physio_group_method)
     else:
@@ -133,8 +138,11 @@ def load_data(dataset, physio, group_method='stack',
 
     # Filter voxels with no recorded BOLD signal (i.e. time series of all 0s)
     func_data, zero_mask, n_vert_orig = filter_zero_voxels(func_data, group_method)
+    # collect masks for future writing out of results
+    params_d['zero_mask'] = zero_mask # non NaN voxel indices
+    params_d['n_vert_orig'] = n_vert_orig # number of voxels before masking
 
-    return func_data, physio_sig, zero_mask, n_vert_orig
+    return func_data, physio_sig, params_d
 
 
 def load_group_func(fps, mask_bin, group_method, params, regress_global):
@@ -178,7 +186,7 @@ def load_group_physio(fps, group_method):
 
 def load_nki_event_file():
     # We are ASSUMING that the event timings are the same across all subjects (e.g. no counterbalancing)
-    events = pd.read_csv('data/dataset_nki/events/sub-A00057406_ses-BAS1_task-BREATHHOLD_acq-1400_events.tsv', 
+    events = pd.read_csv('data/dataset_nki/events/sub-A00031219_ses-BAS2_task-BREATHHOLD_acq-1400_events.tsv', 
                          sep='\t')
     return events
 
@@ -212,7 +220,7 @@ def load_subject_list(dataset, subject_list_fp):
         subj = subj_df.subject.tolist()
         scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan]
     elif dataset == 'chang_cue':
-        subj = subj_df.subject.tolist()
+        subj = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.subject]
         scan = [f'000{s}' if s <10 else f'00{s}' for s in subj_df.scan]
     elif dataset == 'hcp':
         subj = subj_df.subject.tolist()
@@ -227,6 +235,9 @@ def load_subject_list(dataset, subject_list_fp):
         subj = subj_df.subject.tolist()
         scan = subj_df.session.tolist()
     elif dataset == 'spreng':
+        subj = subj_df.subject.tolist()
+        scan = subj_df.scan.tolist()
+    elif dataset == 'toronto':
         subj = subj_df.subject.tolist()
         scan = subj_df.scan.tolist()
     elif dataset == 'yale':
@@ -257,9 +268,9 @@ def regress_global_signal(func_data, mask_nan=True):
     return func_data
 
 
-def write_nifti(data, output_file, zero_mask, orig_n_vert):
-    data_imp = impute_zero_voxels(data, zero_mask, orig_n_vert)
-    mask_nii = nb.load(mask)
+def write_nifti(data, output_file, params):
+    data_imp = impute_zero_voxels(data, params['zero_mask'], params['n_vert_orig'])
+    mask_nii = nb.load(params['mask'])
     mask_bin = mask_nii.get_fdata() > 0
     nifti_4d = np.zeros(mask_nii.shape + (data_imp.shape[0],), 
                         dtype=data_imp.dtype)

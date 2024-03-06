@@ -139,6 +139,8 @@ data/dataset_chang_cue/*/
 data/dataset_spreng/*/
 data/dataset_yale/*/
 data/dataset_natview/*/
+data/dataset_toronto/*/
+
 
 # .asv files output from matlab
 *.asv

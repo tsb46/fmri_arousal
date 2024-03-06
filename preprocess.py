@@ -32,16 +32,22 @@ from utils.physio_utils import (
 )
 from utils.signal_utils import butterworth_filter, clip_spikes
 
-# Dilated mask that includes sinuses slightly outside gray matter tissue
-mask="masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz"
-
 # path to the analysis parameter .json file - contains dataset tr
 params_fp='analysis_params.json'
 
 # datasets
-datasets = ['chang', 'chang_bh', 'chang_cue', 
-            'nki', 'nki_rest', 'hcp', 'spreng', 
-            'yale', 'natview']
+datasets = [
+    'chang', 
+    'chang_bh', 
+    'chang_cue', 
+    'nki', 
+    'nki_rest', 
+    'hcp', 
+    'spreng', 
+    'toronto', 
+    'yale', 
+    'natview'
+]
 
 # eeg channel selections for chang and natview datasets
 chang_eeg_chan = ['P3', 'P4', 'Pz', 'O1', 'O2', 'Oz']
@@ -98,7 +104,7 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
     return afni_echo_fps, afni_combine_fp
     
 
-def anat_proc(fp, subj, output_dict, crop):
+def anat_proc(fp, subj, output_dict, crop, bet_frac):
     # anatomical preprocessing pipeline
     fp = fp.format(subj)
     fp_base = get_fp_base(fp)
@@ -110,7 +116,7 @@ def anat_proc(fp, subj, output_dict, crop):
         robustfov(fp_reorient, fp_reorient)
     # brain extraction
     fp_bet = f"{output_dict['anat']['bet']}/{fp}"
-    bet(fp_reorient, fp_bet)
+    bet(fp_reorient, fp_bet, bet_frac)
     # fast tissue segmentation - return white matter segment
     fp_fast = f"{output_dict['anat']['fast']}/{fp}"
     fp_wm_base = fast(fp_bet, fp_fast)
@@ -272,16 +278,12 @@ def epi_mask(fp_in, fp_mask):
 def extract_physio(ts, phys_label, sf):
     # extract features from physiological signals using Neurokit
     # extraction functions return pandas dataframe
-    if phys_label == 'cng':
-        phys_ts = extract_cng_signals(ts, sf)
-    elif phys_label == 'ecg':
+    if phys_label == 'ecg':
         phys_ts = extract_ecg_signals(ts, sf)
     elif phys_label == 'eeg':
         phys_ts = extract_eeg_signals(ts, sf)
     elif phys_label == 'gsr':
         phys_ts = extract_gsr_signals(ts, sf)
-    elif phys_label == 'bp':
-        phys_ts = extract_map_signals(ts[0], ts[1], sf)
     elif phys_label == 'resp':
         phys_ts = extract_resp_signals(ts, sf)
     elif phys_label == 'ppg':
@@ -294,7 +296,7 @@ def extract_physio(ts, phys_label, sf):
 
 
 def func_full_proc(fp, subj, scan, anat_out_dict, output_dict, tr,
-                   slice_timing=None, trim=None):
+                   mask, slice_timing=None, trim=None):
     # full preprocessing pipeline starting with raw functional
     fp = fp.format(subj, scan)
     fp_base = get_fp_base(fp)
@@ -324,10 +326,11 @@ def func_full_proc(fp, subj, scan, anat_out_dict, output_dict, tr,
     fp_warp = f"{output_dict['func']['standard']}/{fp}"
     warp_func(fp_mcflirt, fp_func2struct, anat_out['fnirt_coef'], fp_warp, mask)
     # apply func minimal preprocessing pipeline
-    func_minimal_proc(fp, subj, scan, output_dict, tr, resample=False, smooth=True)
+    func_minimal_proc(fp, subj, scan, output_dict, tr, mask,
+                      resample=False, smooth=True)
 
 
-def func_minimal_proc(fp, subj, scan, output_dict, tr, 
+def func_minimal_proc(fp, subj, scan, output_dict, tr, mask,
                       resample=True, smooth=True):
     # minimal preprocessing pipeline starting with MNI-registred and 
     # preprocessed functional data
@@ -355,7 +358,7 @@ def func_minimal_proc(fp, subj, scan, output_dict, tr,
 
 
 def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, output_dict,
-                  tr, slice_timing=None, trim=None):
+                  tr, mask, slice_timing=None, trim=None):
     # full multiecho preprocessing pipeline starting with raw functional
     # get combined functional name
     fp_func = fp_me['func'].format(subj, scan)
@@ -445,12 +448,12 @@ def get_fp(dataset):
             'out': 'sub_00{0}-mr_{1}-adb_physio'
         }
     elif dataset == 'chang_cue':
-        func = 'sub_00{0}-mr_{1}-ectp_echo1_w_dspk_dtr_blur3mm.nii.gz'
+        func = 'sub_{0}-mr_{1}-ect_echo1_w_dspk_blur3mm.nii.gz'
         anat = None
         physio = {
-            'physio': 'sub_00{0}-mr_{1}-ectp_echo1_physOUT.mat',
-            'eeg': 'sub_00{0}-mr_{1}-ectp_echo1_EEG_pp.mat',
-            'out': 'sub_00{0}-mr_{1}-ectp_physio'
+            'physio': 'sub_{0}-mr_{1}-ect_echo1_physOUT.mat',
+            'eeg': 'sub_{0}-mr_{1}-ect_echo1_EEG_pp.mat',
+            'out': 'sub_{0}-mr_{1}-ect_physio'
         }
     elif dataset == 'hcp':
         func = '{0}_{1}_hp2000_clean.nii.gz'
@@ -492,6 +495,13 @@ def get_fp(dataset):
         physio = {
             'physio': '{0}_{1}_task-rest_physio.tsv.gz',
             'out': '{0}_{1}_task-rest_physio'
+        }
+    elif dataset == 'toronto': 
+        func = '{0}_rest_bold_{1}.nii.gz'
+        anat = '{0}_T1w.nii.gz'
+        physio = {
+            'physio': '{0}_rest_bold_{1}.mat',
+            'out': '{0}_rest_bold_{1}_physio'
         }
     elif dataset == 'yale':
         func = '{0}_task-rest_run-0{1}_bold.nii.gz'
@@ -559,7 +569,7 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim, no_eeglab)
         fp_eeg = fp['eeg'].format(subj, scan)
         fp_p_in = f"{output_dict['physio']['raw']}/{fp_p}"
         fp_eeg_in = f"{output_dict['eeg']['raw']}/{fp_eeg}"
-        # Trim off first 14.7s to align w/ functional (first 7 TRs were trimmed from functional)
+        # Load eeg .mat file
         physio_raw = loadmat(fp_p_in, squeeze_me=True)
         sf = 1/physio_raw['OUT_p']['dt_phys'].item()
         # Pull physio data into dict
@@ -698,6 +708,23 @@ def load_physio(fp, subj, scan, dataset, output_dict, resample, trim, no_eeglab)
         if (dataset == 'nki') | (dataset == 'nki_rest'):
             physio['gsr'] = physio_df['gsr'].values
             sf_dict['gsr'] = sf
+    # load toronto physio
+    elif dataset == 'toronto':
+        sf = 200 # toronto physio sampling frequency
+        resp_label = 'RSP: LPF'
+        fp_p = fp['physio'].format(subj, scan)
+        fp_p_in = f"{output_dict['physio']['raw']}/{fp_p}"
+        # Load eeg .mat file
+        physio_raw = loadmat(fp_p_in, squeeze_me=True)
+        physio_df = pd.DataFrame(physio_raw['data'], 
+                                 columns=physio_raw['labels'])
+        # trim to start and end of trigger
+        trig_start = physio_df.loc[physio_df['TRIG'] == 5].index[0]
+        trig_end = physio_df.loc[physio_df['TRIG'] == 5].index[-1]
+        physio = {
+            'resp': physio_df.loc[trig_start:trig_end][resp_label].values
+        }
+        sf_dict = {'resp': sf}
     # load yale physio
     elif dataset == 'yale':
         sf = 1 # already resampled to functional scan TR
@@ -786,7 +813,7 @@ def physio_proc(fp, subj, scan, dataset, fp_func,
         np.savetxt(f'{fp_out}_{col}_filt.txt', physio_out_filt[col].values)
 
 
-def preprocess(dataset, n_cores, anat_skip, no_eeglab):
+def preprocess(dataset, n_cores, anat_skip, func_skip, no_eeglab):
     # master function for preprocessing datasets
     print(f'preprocessing {dataset}')
     # load analysis_params.json to get dataset tr
@@ -796,7 +823,9 @@ def preprocess(dataset, n_cores, anat_skip, no_eeglab):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'minimal', # minimal, multiecho or full preprocessing pipeline
+            'mask': params_dataset['mask'], # path to binary brain mask (defined at start of script)
             'robustfov': False, # whether to crop anatomical image
+            'bet_frac': None, # bet fractional intensity threshold (0 - 1): higher -> more aggresive
             'slicetime': None, # filepath to slice timing file, or boolean (assume header contains info)
             'smooth': False, # whether to smooth (5mm fwhm) functional scan
             'trim': None, # number of volumes to trim from begin of functional scan (if negative, trim from end)
@@ -812,7 +841,9 @@ def preprocess(dataset, n_cores, anat_skip, no_eeglab):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'minimal',
+            'mask': params_dataset['mask'],
             'robustfov': False,
+            'bet_frac': None,
             'slicetime': None,
             'smooth': True,
             'trim': None,
@@ -827,7 +858,9 @@ def preprocess(dataset, n_cores, anat_skip, no_eeglab):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
+            'mask': params_dataset['mask'],
             'robustfov': True,
+            'bet_frac': 0.25,
             'slicetime': 'data/dataset_natview/slicetiming_natview.txt',
             'smooth': True,
             'trim': -2,
@@ -842,22 +875,26 @@ def preprocess(dataset, n_cores, anat_skip, no_eeglab):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
+            'mask': params_dataset['mask'],
             'robustfov': False,
+            'bet_frac': 0.25,
             'slicetime': None,
             'smooth': True,
-            'trim': None,
+            'trim': 7,
             'n_cores': n_cores,
             'eeg': False,
             'tr': params_dataset['tr'],
             'resample_physio': None,
-            'trim_physio': None,
+            'trim_physio': 9.8,
             'resample_to_func': True 
         }
     elif dataset == 'nki_rest':
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
+            'mask': params_dataset['mask'],
             'robustfov': False,
+            'bet_frac': 0.25,
             'slicetime': None,
             'smooth': True,
             'trim': 7,
@@ -872,7 +909,9 @@ def preprocess(dataset, n_cores, anat_skip, no_eeglab):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'multiecho',
+            'mask': params_dataset['mask'],
             'robustfov': False,
+            'bet_frac': 0.25,
             'slicetime': True, 
             'smooth': True,
             'trim': 4,
@@ -884,11 +923,30 @@ def preprocess(dataset, n_cores, anat_skip, no_eeglab):
             'resample_to_func': True,
             'echo_times': [13.7, 30, 47] # echo times for multiecho scan
         }
+    elif dataset == 'toronto':
+        params_dataset = params_json[dataset]
+        params = {
+            'p_type': 'full',
+            'mask': params_dataset['mask'],
+            'robustfov': True,
+            'bet_frac': 0.5,
+            'slicetime': None,
+            'smooth': True,
+            'trim': 26,
+            'n_cores': n_cores,
+            'eeg': False,
+            'tr': params_dataset['tr'],
+            'resample_physio': None,
+            'trim_physio': 9.88,
+            'resample_to_func': True 
+        }
     elif (dataset == 'yale'):
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'full',
+            'mask': params_dataset['mask'],
             'robustfov': False,
+            'bet_frac': 0.25,
             'slicetime': None, 
             'smooth': True,
             'trim': 10,
@@ -908,12 +966,13 @@ def preprocess(dataset, n_cores, anat_skip, no_eeglab):
     params['func'], params['anat'], params['physio'] = get_fp(dataset)
     # apply preprocessing pipeline (possibly in parallel)
     preprocess_map(
-        subj, scan, params, output_dict, dataset, anat_skip, no_eeglab
+        subj, scan, params, output_dict, dataset, anat_skip, 
+        func_skip, no_eeglab
     )
 
 
 def preprocess_map(subj, scan, params, output_dict, dataset, 
-                   anat_skip, no_eeglab):
+                   anat_skip, func_skip, no_eeglab):
     # apply preprocessing pipeline to each subject in parallel
     pool = Pool(processes=params['n_cores'])
     # Full preprocessing pipeline - starting from raw
@@ -927,33 +986,38 @@ def preprocess_map(subj, scan, params, output_dict, dataset,
         else:
             # Apply anatomical pipeline to structural scans (possibly in parallel)
             anat_iter = zip(repeat(params['anat']), subj_unq, repeat(output_dict),
-                         repeat(params['robustfov']))
+                            repeat(params['robustfov']), repeat(params['bet_frac']))
             anat_out = pool.starmap(anat_proc, anat_iter)
             # convert anat output to dict with subj id as keys
             anat_out_dict = {a[0]: a[1] for a in anat_out}
-
         # functional pipeline
-        if params['p_type'] == 'full':
-            func_iter = zip(
-             repeat(params['func']), subj, scan, repeat(anat_out_dict),
-             repeat(output_dict), repeat(params['tr']),
-             repeat(params['slicetime']), repeat(params['trim'])
-            )
-            pool.starmap(func_full_proc, func_iter)
-        elif params['p_type'] == 'multiecho':
-            func_iter = zip(
-             repeat(params['func']), repeat(params['echo_times']),
-             subj, scan, repeat(anat_out_dict),
-             repeat(output_dict), repeat(params['tr']),
-             repeat(params['slicetime']), repeat(params['trim'])
-            )
-            pool.starmap(func_me_proc, func_iter)
+        if not func_skip:
+            if params['p_type'] == 'full':
+                func_iter = zip(
+                 repeat(params['func']), subj, scan, repeat(anat_out_dict),
+                 repeat(output_dict), repeat(params['tr']), 
+                 repeat(params['mask']), repeat(params['slicetime']), 
+                 repeat(params['trim']),
+                )
+                pool.starmap(func_full_proc, func_iter)
+            elif params['p_type'] == 'multiecho':
+                func_iter = zip(
+                 repeat(params['func']), repeat(params['echo_times']),
+                 subj, scan, repeat(anat_out_dict),
+                 repeat(output_dict), repeat(params['tr']), 
+                 repeat(params['mask']), repeat(params['slicetime']),
+                  repeat(params['trim']),
+                )
+                pool.starmap(func_me_proc, func_iter)
      # Minimal preprocessing pipeline - starting from preprocessed
     elif params['p_type'] == 'minimal':
-        func_iter = zip(repeat(params['func']), subj, scan, 
-                        repeat(output_dict), repeat(params['tr']), 
-                        repeat(True), repeat(params['smooth']))
-        pool.starmap(func_minimal_proc, func_iter)
+        if not func_skip:
+            func_iter = zip(repeat(params['func']), subj, scan, 
+                            repeat(output_dict), repeat(params['tr']), 
+                            repeat(params['mask']), repeat(True), 
+                            repeat(params['smooth'])
+                            )
+            pool.starmap(func_minimal_proc, func_iter)
 
     # Physio preprocessing
     if params['p_type'] == 'multiecho':
@@ -988,8 +1052,9 @@ if __name__ == '__main__':
                         help='<Required> Dataset to preprocess - '
                         'to run all datasets use the arg "all"',
                         choices=['all', 'chang', 'chang_bh', 'chang_cue', 
-                                 'nki', 'nki_rest', 'hcp', 'spreng', 'yale', 
-                                 'natview'], 
+                                 'natview', 'nki', 'nki_rest', 
+                                 'hcp', 'spreng', 'toronto', 'yale'
+                                 ], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_cores',
@@ -998,8 +1063,12 @@ if __name__ == '__main__':
                         required=False,
                         type=int)
     parser.add_argument('-anat_skip', '--anat_skip',
-                        help='whether to run function preprocessing without'
-                        ' having to re-run anatomical pipeline',
+                        help='whether to run preprocessing '
+                        'without having to re-run anatomical pipeline',
+                        action='store_true')
+    parser.add_argument('-func_skip', '--func_skip',
+                        help='whether to run preprocessing without'
+                        ' having to re-run functional pipeline',
                         action='store_true')
     parser.add_argument('-no_eeglab', '--no_eeglab',
                         help='Whether to skip eeglab preprocessing for natview dataset',
@@ -1009,10 +1078,12 @@ if __name__ == '__main__':
     # if dataset == 'all', run through all datasets and preprocess
     if args_dict['dataset'] == 'all':
         for d in datasets:
-            preprocess(d, args_dict['n_cores'], args_dict['no_eeglab'])
+            preprocess(d, args_dict['n_cores'], args_dict['anat_skip'], 
+                       args_dict['func_skip'], args_dict['no_eeglab'])
     else:
         preprocess(args_dict['dataset'], args_dict['n_cores'], 
-                   args_dict['anat_skip'], args_dict['no_eeglab'])
+                   args_dict['anat_skip'], args_dict['func_skip'], 
+                   args_dict['no_eeglab'])
 
 
 

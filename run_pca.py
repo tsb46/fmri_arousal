@@ -59,7 +59,7 @@ def rotation(pca_output, data, rotation):
     return pca_output
 
 
-def write_results(dataset, pca_output, pca_type, zero_mask, n_vert, 
+def write_results(dataset, pca_output, pca_type, params, 
                   rotate, out_dir):
     # write out results of pca analysis
     # create output name
@@ -80,20 +80,20 @@ def write_results(dataset, pca_output, pca_type, zero_mask, n_vert,
         loadings_imag = np.imag(loadings)
         loadings_ang = np.angle(loadings)
         loadings_abs = np.abs(loadings)
-        write_nifti(loadings_abs, f'{analysis_str}_magnitude', zero_mask, n_vert)
-        write_nifti(loadings_real, f'{analysis_str}_real', zero_mask, n_vert)
-        write_nifti(loadings_imag, f'{analysis_str}_imag', zero_mask, n_vert)
-        write_nifti(loadings_ang, f'{analysis_str}_ang', zero_mask, n_vert)        
+        write_nifti(loadings_abs, f'{analysis_str}_magnitude', params)
+        write_nifti(loadings_real, f'{analysis_str}_real', params)
+        write_nifti(loadings_imag, f'{analysis_str}_imag', params)
+        write_nifti(loadings_ang, f'{analysis_str}_ang', params)        
     elif pca_type == 'real':
-        write_nifti(loadings, f'{analysis_str}', zero_mask, n_vert)
+        write_nifti(loadings, f'{analysis_str}', params)
     pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
 
 
 def run_pca(dataset, n_comps, pca_type, rotate, recon, regress_global, 
             out_dir=None):
     # load dataset
-    func_data, _, zero_mask, n_vert = load_data(dataset, physio=None, 
-                                                regress_global=regress_global) 
+    func_data, _, params = load_data(dataset, physio=None, 
+                                     regress_global=regress_global) 
     # if pca_type is complex, compute hilbert transform
     if pca_type == 'complex':
         func_data = hilbert_transform(func_data)
@@ -109,11 +109,11 @@ def run_pca(dataset, n_comps, pca_type, rotate, recon, regress_global,
     if recon & (pca_type == 'complex'):
         del func_data # free up memory
         n_recon = 1 # only reconstruct first component
-        cpca_recon(dataset, pca_output, n_recon, rotate, zero_mask, n_vert, 
-                   out_dir, n_bins=30)
+        cpca_recon(dataset, pca_output, n_recon, rotate, 
+                   params, out_dir, n_bins=30)
 
     # write out results
-    write_results(dataset, pca_output, pca_type, zero_mask, n_vert, 
+    write_results(dataset, pca_output, pca_type, params, 
                   rotate, out_dir)
 
 
@@ -122,8 +122,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run PCA or CPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
-                        choices=['chang', 'chang_bh', 'chang_cue', 'nki', 'nki_rest',
-                                 'hcp', 'spreng', 'yale', 'natview'], 
+                        choices=['chang', 'chang_bh', 'chang_cue', 
+                                 'natview', 'nki', 'nki_rest', 'hcp', 
+                                 'spreng', 'toronto', 
+                                 'yale'], 
                         required=True,
                         type=str)
     parser.add_argument('-n', '--n_comps',
