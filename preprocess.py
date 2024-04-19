@@ -407,7 +407,8 @@ def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, output_dict,
     fp_warp = f"{output_dict['func']['standard']}/{fp_func}"
     warp_func(fp_tedana, fp_func2struct, anat_out['fnirt_coef'], fp_warp, mask)
     # apply func minimal preprocessing pipeline
-    func_minimal_proc(fp_func, subj, scan, output_dict, tr, resample=False, smooth=True)
+    func_minimal_proc(fp_func, subj, scan, output_dict, tr, mask,
+                      resample=False, smooth=True)
 
 
 def get_anat_fp(fp, subj_list, output_dict):
