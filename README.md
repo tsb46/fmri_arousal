@@ -52,7 +52,7 @@ Below is a table of the datasets used in the study. For each dataset, their repo
 | -------------------- | ------------ | -------------------------- | ------------------------------------------------------------------ | ------------------ | ------------ |
 |        chang         | ME-REST      | Resting-state              | [link](https://elifesciences.org/articles/62376)                   |                    | preprocessed |
 |        chang_bh      | ME-TASK      | Auditory Cue - Deep Breath |                                                                    |                    | preprocessed |
-|        chang_cue     | ME-TASK-CUE  | Auditory Cue - No Breath   |                                                                    |                    | preprocessed |
+|        chang_cue     | ME-TASK-CUE  | Auditory Cue - Button Response   |                                                                    |                    | preprocessed |
 |        hcp           | HCP-REST     | Resting-state              | [link](https://www.humanconnectome.org/study/hcp-young-adult)      | :white_check_mark: | preprocessed |
 |        natview       | NATVIEW-REST | Resting-state              | [link](https://www.biorxiv.org/content/10.1101/2022.11.23.517540v1)| :white_check_mark: | raw          |
 |        nki           | NKI-TASK     | Breath Hold                | [link](http://fcon_1000.projects.nitrc.org/indi/enhanced/)         | :white_check_mark: | raw          |
@@ -60,7 +60,7 @@ Below is a table of the datasets used in the study. For each dataset, their repo
 |        spreng        | ME-REST-SUPP | Resting-state              | [link](https://openneuro.org/datasets/ds003592/versions/1.0.13)    | :white_check_mark: | raw          |
 |        yale          | YALE-REST    | Resting-state              | [link](https://openneuro.org/datasets/ds003673/versions/2.0.1)     | :white_check_mark: | raw          |
 
-To pull the hcp, natview, nki and yale datasets, move into the [data](data/) directory and run the following command-line Python script:
+To pull the hcp, natview, spreng, nki and yale datasets, move into the [data](data/) directory and run the following command-line Python script:
 
 ```
 cd data
@@ -115,6 +115,5 @@ datasets = [
 ]
 ```
 
-**Note:** this script also runs several supplementary analyses, including physiological cross-correlations, peak-averaging of BOLD time courses around physiological signal peaks, and block averaging of task-fMRI datasets (nki, chang_bh, and chang_cue). These are not strictly necessary for the analysis.ipynb. If you are not interested in these outputs, you can comment out these lines from the run_all.py script.
 
 
