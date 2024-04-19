@@ -10,8 +10,7 @@ import os
 from itertools import repeat
 from multiprocessing import Pool
 from preprocess import (
-    create_directories, get_anat_fp, 
-    get_fp, func_minimal_proc
+    get_anat_fp, get_fp, func_minimal_proc
 )
 from tedana import io
 from tedana.decay import fit_decay_ts
