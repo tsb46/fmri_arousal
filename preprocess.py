@@ -407,7 +407,8 @@ def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, output_dict,
     fp_warp = f"{output_dict['func']['standard']}/{fp_func}"
     warp_func(fp_tedana, fp_func2struct, anat_out['fnirt_coef'], fp_warp, mask)
     # apply func minimal preprocessing pipeline
-    func_minimal_proc(fp_func, subj, scan, output_dict, tr, resample=False, smooth=True)
+    func_minimal_proc(fp_func, subj, scan, output_dict, tr, mask,
+                      resample=False, smooth=True)
 
 
 def get_anat_fp(fp, subj_list, output_dict):
@@ -415,12 +416,13 @@ def get_anat_fp(fp, subj_list, output_dict):
     # for preprocessing functional scans
     anat_out = {}
     for subj in subj_list:
-        fp = fp.format(subj)
-        fp_base = get_fp_base(fp)
-        fp_fast_base = get_fp_base(f"{output_dict['anat']['fast']}/{fp}")
+        fp_s = str(fp)
+        fp_s = fp_s.format(subj)
+        fp_base = get_fp_base(fp_s)
+        fp_fast_base = get_fp_base(f"{output_dict['anat']['fast']}/{fp_s}")
         anat_out_subj = {
-            'reorient': f"{output_dict['anat']['reorient']}/{fp}",
-            'bet': f"{output_dict['anat']['bet']}/{fp}",
+            'reorient': f"{output_dict['anat']['reorient']}/{fp_s}",
+            'bet': f"{output_dict['anat']['bet']}/{fp_s}",
             'wm': f'{fp_fast_base}_pve_2_thres.nii.gz',
             'flirt_mat': f"{output_dict['anat']['flirt']}/{fp_base}_flirt.mat",
             'fnirt_coef': f"{output_dict['anat']['fnirt']}/{fp_base}_fn_coef.nii.gz"
