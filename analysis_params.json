@@ -74,7 +74,8 @@
 		"nscans": 165,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
 		"func": "data/dataset_spreng/func/proc6_bandpass/{0}_{1}_task-rest_bold.nii.gz",
-		"physio": "data/dataset_spreng/physio/proc1_physio/{0}_{1}_task-rest_physio_{2}_filt.txt"
+		"physio": "data/dataset_spreng/physio/proc1_physio/{0}_{1}_task-rest_physio_{2}_filt.txt",
+		"echotimes": [13.7, 30, 47] 
 	},
 	"toronto": {
 		"subject_list": "data/dataset_toronto/subject_list_toronto.csv", 

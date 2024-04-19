@@ -921,7 +921,7 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, no_eeglab):
             'resample_physio': None,
             'trim_physio': 12,
             'resample_to_func': True,
-            'echo_times': [13.7, 30, 47] # echo times for multiecho scan
+            'echo_times': params_dataset['echotimes'] # echo times for multiecho scan
         }
     elif dataset == 'toronto':
         params_dataset = params_json[dataset]
