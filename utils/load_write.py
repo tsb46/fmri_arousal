@@ -54,13 +54,17 @@ def filter_zero_voxels(nifti_data, group_method, use_first=True):
         return nifti_data, zero_mask, orig_n_vert
 
 
-def find_fps(dataset, physio, params):
+def find_fps(dataset, physio, params, multiecho):
     # find file paths to functional and physio files
     # load subject list
     subj_list, scan_list = load_subject_list(dataset, params['subject_list'])
     # get functional file paths
-    func_fps = [params['func'].format(subj, scan) 
-                for subj, scan in zip(subj_list, scan_list)]
+    if multiecho is not None:
+        func_fps = [params['func_me'].format(subj, scan, multiecho)
+                    for subj, scan in zip(subj_list, scan_list)]
+    else:
+        func_fps = [params['func'].format(subj, scan) 
+                    for subj, scan in zip(subj_list, scan_list)]
     fps = {
         'func': func_fps
     }
@@ -117,7 +121,7 @@ def load_chang_cue_event_file(subj, scan):
 
 def load_data(dataset, physio, group_method='stack', 
               physio_group_method='stack', 
-              regress_global=False):
+              regress_global=False, multiecho=None):
     # master function for loading and concatenating functional/physio files
     params = load_params()
     params_d = params[dataset]
@@ -126,8 +130,7 @@ def load_data(dataset, physio, group_method='stack',
     mask_bin = nb.load(params_d['mask']).get_fdata() > 0
 
     # Pull file paths
-    fps = find_fps(dataset, physio, params_d)
-
+    fps = find_fps(dataset, physio, params_d, multiecho)
     # Pull data for group level analysis
     func_data = load_group_func(fps['func'], mask_bin, group_method, 
                                 params_d, regress_global)
@@ -149,7 +152,7 @@ def load_group_func(fps, mask_bin, group_method, params, regress_global):
     if group_method == 'stack':
         mask_n = len(np.nonzero(mask_bin)[0])
         indx=0
-        group_data = initialize_group_func(fps, params['nscans'], mask_n) 
+        group_data = initialize_group_func(fps, params['nscans'], mask_n)
     elif group_method == 'list':
         group_data = []
     # Loop through files and concatenate/append
