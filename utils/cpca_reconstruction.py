@@ -13,11 +13,13 @@ def create_bins(phase_ts, n_bins):
     return bin_indx, bin_centers
 
 
-def create_dynamic_phase_maps(recon_ts, bin_indx, n_bins):
+def create_dynamic_phase_maps(data, bin_indx, n_bins, weights):
     bin_timepoints = []
     for n in range(1, n_bins+1):
         ts_indx = np.where(bin_indx==n)[0]
-        bin_timepoints.append(np.mean(recon_ts[ts_indx,:], axis=0))
+        bin_timepoints.append(
+            np.average(data[ts_indx,:], weights=weights[n-1], axis=0)
+        )
     dynamic_phase_map = np.array(bin_timepoints)
     return dynamic_phase_map
 
@@ -47,20 +49,39 @@ def write_results(dataset,recon_comp, n_comp, params, out_dir):
     write_nifti(recon_comp, analysis_str, params)
 
 
-def cpca_recon(dataset, cpca_res, n_recon, rotation, params,
-               out_dir=None, n_bins=30):
+def cpca_recon(dataset, cpca_res, n_recon, rotation, recon_method,
+               params, data=None, out_dir=None, n_bins=30):
     # reconstruct cpca component 'movies' from cpca results
     bin_indx_all = []
     bin_centers_all = []
     for n in range(n_recon):
-        recon_ts = reconstruct_ts(cpca_res, [n], rotation)
-        phase_ts = np.angle(cpca_res['pc_scores'][:,n])
+        if recon_method == 'proj':
+            data = reconstruct_ts(cpca_res, [n], rotation)
+            phase_ts = np.angle(cpca_res['pc_scores'][:,n])
+        elif recon_method == 'weighted':
+            # the complex conjugate of the PC time courses was taken
+            # in the pca script for visualization purposes; to align
+            # with raw time courses, take the complex conjugate again
+            phase_ts = np.angle(cpca_res['pc_scores'][:,n].conj())
         # shift phase delay angles from -pi to pi -> 0 to 2*pi
         phase_ts = np.mod(phase_ts, 2*np.pi)
         # bin time courses into phase bins
         bin_indx, bin_centers = create_bins(phase_ts, n_bins)
+        # create weight vector based on CPC amplitude, if 'weighted' method
+        if recon_method == 'weighted':
+            power_ts = np.abs(cpca_res['pc_scores'][:,n])**2
+        weight_vec = []
+        for i in range(1, n_bins+1):
+            ts_indx = np.where(bin_indx==i)[0]
+            if recon_method == 'weighted':
+                w = power_ts[ts_indx]
+            elif recon_method == 'proj':
+                w = np.ones(len(ts_indx))
+            weight_vec.append(w)
+
         # average time courses within bins
-        dynamic_phase_map = create_dynamic_phase_maps(recon_ts, bin_indx, n_bins)
+        dynamic_phase_map = create_dynamic_phase_maps(data, bin_indx, 
+                                                      n_bins, weight_vec)
         bin_indx_all.append(bin_indx); bin_centers_all.append(bin_centers)
         write_results(dataset, dynamic_phase_map, n, params, out_dir)
     if out_dir is not None:
