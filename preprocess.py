@@ -438,10 +438,10 @@ def get_fp(dataset):
         }
     elif dataset == 'chang_cue':
         func = {
-            'echo': 'sub_00{0}-mr_{1}-ect_echo{2}.nii.gz',
-            'func': 'sub_00{0}-mr_{1}-ect.nii.gz',
+            'echo': 'sub_{0}-mr_{1}-ect_echo{2}.nii.gz',
+            'func': 'sub_{0}-mr_{1}-ect.nii.gz',
         }
-        anat = 'sub_00{0}-mprage.nii.gz'
+        anat = 'sub_{0}-mprage.nii.gz'
         physio = {
             'physio': 'sub_{0}-mr_{1}-ect_echo1_physOUT.mat',
             'eeg': 'sub_{0}-mr_{1}-ect_echo1_EEG_pp.mat',
