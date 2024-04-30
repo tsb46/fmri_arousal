@@ -1006,12 +1006,7 @@ def preprocess_map(subj, scan, params, output_dict, dataset,
                  repeat(params['mask']), repeat(params['slicetime']),
                   repeat(params['trim']),
                 )
-                # pool.starmap(func_me_proc, func_iter)
-                func_me_proc(
-                    params['func'], params['echo_times'], subj[0],
-                    scan[0], anat_out_dict, output_dict, params['tr'],
-                    params['mask'], params['slicetime'], params['trim']
-                )
+                pool.starmap(func_me_proc, func_iter)
      # Minimal preprocessing pipeline - starting from preprocessed
     elif params['p_type'] == 'minimal':
         if not func_skip:
