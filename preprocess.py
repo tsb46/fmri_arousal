@@ -387,7 +387,7 @@ def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, output_dict,
     # execute tedana pipeline
     tedana_denoise(fps_afni, echo_times, fp_bet_func, tedana_out_dir, fp_func_base)
     # define path to denoised output
-    fp_tedana = f"{tedana_out_dir}/{fp_func_base}_desc-optcomDenoised_bold.nii.gz"
+    fp_tedana = f"{tedana_out_dir}/{fp_func_base}_desc-optcom_bold.nii.gz"
     # apply warp to get functional to MNI
     fp_warp = f"{output_dict['func']['standard']}/{fp_func}"
     warp_func(fp_tedana, fp_func2struct, anat_out['fnirt_coef'], fp_warp, mask)
