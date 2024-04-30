@@ -6,7 +6,7 @@
 		"physio_labels": ["PPG_HR", "PPG_PEAK_AMP", "PPG_LOW", "RSP_RVT", "ALPHA", "DELTA", "THETA"],
 		"nscans": 14,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
-		"func": "data/dataset_chang/func/proc3_bandpass/sub_00{0}-mr_{1}-ecr.nii.gz",
+		"func": "data/dataset_chang/func/proc6_bandpass/sub_00{0}-mr_{1}-ecr.nii.gz",
 		"eeg": "data/dataset_chang/eeg/proc1_eeg/sub_00{0}-mr_{1}_eeg_pp.raw.fif",
 		"physio": "data/dataset_chang/physio/proc1_physio/sub_00{0}-mr_{1}-ecr_physio_{2}_filt.txt",
 		"echotimes": [13.0, 29.4, 45.7] 
@@ -17,7 +17,7 @@
 		"physio_labels": ["PPG_HR", "PPG_PEAK_AMP", "PPG_LOW", "RSP_RVT", "ALPHA", "DELTA", "THETA"],
 		"nscans": 8,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
-		"func": "data/dataset_chang_bh/func/proc3_bandpass/sub_00{0}-mr_{1}-adb.nii.gz",
+		"func": "data/dataset_chang_bh/func/proc6_bandpass/sub_00{0}-mr_{1}-adb.nii.gz",
 		"eeg": "data/dataset_chang_bh/eeg/proc1_eeg/sub_00{0}-mr_{1}-adb_echo1_EEG_pp.raw.fif",
 		"physio": "data/dataset_chang_bh/physio/proc1_physio/sub_00{0}-mr_{1}-adb_physio_{2}_filt.txt",
 		"echotimes": [13.0, 29.4, 45.7] 
@@ -28,7 +28,7 @@
 		"physio_labels": ["PPG_HR", "PPG_PEAK_AMP", "PPG_LOW", "RSP_RVT", "ALPHA", "DELTA", "THETA"],
 		"nscans": 12,
 		"mask": "masks/MNI152_T1_3mm_brain_mask_dilated.nii.gz",
-		"func": "data/dataset_chang_cue/func/proc3_bandpass/sub_{0}-mr_{1}-ect.nii.gz",
+		"func": "data/dataset_chang_cue/func/proc6_bandpass/sub_{0}-mr_{1}-ect.nii.gz",
 		"eeg": "data/dataset_chang_cue/eeg/proc1_eeg/sub_{0}-mr_{1}-ect_echo1_EEG_pp.raw.fif",
 		"physio": "data/dataset_chang_cue/physio/proc1_physio/sub_{0}-mr_{1}-ect_physio_{2}_filt.txt",
 		"echotimes": [13.0, 29.4, 45.7] 

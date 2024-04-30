@@ -70,6 +70,10 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
         blocks += ['tshift']
         pb = '02' # needed for specify output BRIK path for echo
         pb_comb = '03' # needed for specify output BRIK path for optcomb
+        # if string argument is given for slice_timing, pass as arg to afni_proc.py
+        if isinstance(slice_timing, str):
+            tpattern = f' -tshift_opts_ts -tpattern {slice_timing} \\'
+            afni_template = afni_template + tpattern
     else:
         pb = '01'
         pb_comb = '02'
@@ -816,10 +820,10 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, physio_skip,
         params_dataset = params_json[dataset]
         params = {
             'p_type': 'multiecho', # minimal, multiecho or full preprocessing pipeline
-            'mask': params_dataset['mask'], # path to binary brain mask (defined at start of script)
-            'robustfov': False, # whether to crop anatomical image
+            'mask': params_dataset['mask'], # path to binary brain mask
+            'robustfov': True, # whether to crop anatomical image
             'bet_frac': 0.5, # bet fractional intensity threshold (0 - 1): higher -> more aggresive
-            'slicetime': True, # filepath to slice timing file, or boolean (assume header contains info)
+            'slicetime': 'alt+z2', # path to slice timing file, boolean (assume header contains info), or arg string
             'smooth': True, # whether to smooth (5mm fwhm) functional scan
             'trim': 7, # number of volumes to trim from begin of functional scan (if negative, trim from end)
             'n_cores': n_cores, 
@@ -1002,7 +1006,12 @@ def preprocess_map(subj, scan, params, output_dict, dataset,
                  repeat(params['mask']), repeat(params['slicetime']),
                   repeat(params['trim']),
                 )
-                pool.starmap(func_me_proc, func_iter)
+                # pool.starmap(func_me_proc, func_iter)
+                func_me_proc(
+                    params['func'], params['echo_times'], subj[0],
+                    scan[0], anat_out_dict, output_dict, params['tr'],
+                    params['mask'], params['slicetime'], params['trim']
+                )
      # Minimal preprocessing pipeline - starting from preprocessed
     elif params['p_type'] == 'minimal':
         if not func_skip:
