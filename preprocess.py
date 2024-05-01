@@ -72,11 +72,17 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
         pb_comb = '04' # needed for specify output BRIK path for optcomb
         # if string argument is given for slice_timing, pass as arg to afni_proc.py
         if isinstance(slice_timing, str):
-            tpattern = f' -tshift_opts_ts -tpattern {slice_timing} \\'
-            afni_template = afni_template + tpattern
+            slicetime_afni = True
+            # load afni_proc.py script for slice timing params
+            with open('utils/afni_proc_template_st.txt') as f:
+                afni_template = f.read()
+            tpattern = f'-tpattern {slice_timing}'
+        else:
+            slicetime_afni = False
     else:
         pb = '02'
         pb_comb = '03'
+        slicetime_afni = False
     blocks += ['volreg', 'despike', 'combine']
     blocks = ' '.join(blocks)
     # determine whether t
@@ -87,9 +93,17 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
     # set output dir for afni_proc.py
     afni_out_dir = f"{afni_base_dir}/{fp_func_base}"
     # format afni_proc string
-    afni_proc_str = afni_template.format(
-        fp_func_base, blocks, fp_echo, echo_times, trim, afni_out_dir
-    )
+    if slicetime_afni:
+        afni_proc_str = afni_template.format(
+            fp_func_base, blocks, fp_echo, echo_times, trim, 
+            afni_out_dir, tpattern
+        )
+    else:
+        afni_proc_str = afni_template.format(
+            fp_func_base, blocks, fp_echo, echo_times, trim, 
+            afni_out_dir
+        )
+    breakpoint()
     # execute afni_proc.py
     os.system(afni_proc_str)
     # don't know how to write .proc file to appropriate directory
@@ -1006,14 +1020,14 @@ def preprocess_map(subj, scan, params, output_dict, dataset,
                  repeat(params['mask']), repeat(params['slicetime']),
                   repeat(params['trim']),
                 )
-                pool.starmap(func_me_proc, func_iter)
-                # func_me_proc(
-                #     params['func'], params['echo_times'],
-                #     subj[0], scan[0],
-                #     anat_out_dict, output_dict,
-                #     params['tr'], params['mask'], params['slicetime'],
-                #     params['trim']
-                # )
+                # pool.starmap(func_me_proc, func_iter)
+                func_me_proc(
+                    params['func'], params['echo_times'],
+                    subj[0], scan[0],
+                    anat_out_dict, output_dict,
+                    params['tr'], params['mask'], params['slicetime'],
+                    params['trim']
+                )
      # Minimal preprocessing pipeline - starting from preprocessed
     elif params['p_type'] == 'minimal':
         if not func_skip:
