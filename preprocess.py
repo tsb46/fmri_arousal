@@ -103,7 +103,6 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
             fp_func_base, blocks, fp_echo, echo_times, trim, 
             afni_out_dir
         )
-    breakpoint()
     # execute afni_proc.py
     os.system(afni_proc_str)
     # don't know how to write .proc file to appropriate directory
@@ -1020,14 +1019,14 @@ def preprocess_map(subj, scan, params, output_dict, dataset,
                  repeat(params['mask']), repeat(params['slicetime']),
                   repeat(params['trim']),
                 )
-                # pool.starmap(func_me_proc, func_iter)
-                func_me_proc(
-                    params['func'], params['echo_times'],
-                    subj[0], scan[0],
-                    anat_out_dict, output_dict,
-                    params['tr'], params['mask'], params['slicetime'],
-                    params['trim']
-                )
+                pool.starmap(func_me_proc, func_iter)
+                # func_me_proc(
+                #     params['func'], params['echo_times'],
+                #     subj[0], scan[0],
+                #     anat_out_dict, output_dict,
+                #     params['tr'], params['mask'], params['slicetime'],
+                #     params['trim']
+                # )
      # Minimal preprocessing pipeline - starting from preprocessed
     elif params['p_type'] == 'minimal':
         if not func_skip:
