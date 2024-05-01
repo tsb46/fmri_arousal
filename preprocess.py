@@ -99,7 +99,7 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
     os.system(f'tcsh -xef {afni_base_dir}/proc.{fp_func_base}')
     # assume echos are indexed from 1 to N
     afni_echo_fps = [
-        f'{afni_out_dir}/pb{pb}.{fp_func_base}.r01.e0{i+1}.volreg+orig.BRIK'
+        f'{afni_out_dir}/pb{pb}.{fp_func_base}.r01.e0{i+1}.despike+orig.BRIK'
         for i in range(n_echos)
     ]
     afni_combine_fp = \
