@@ -24,26 +24,6 @@ from utils.load_write import (
 # path to the analysis parameter .json file
 params_fp='../analysis_params.json'
 
-# set paths to spreng preprocessed output directories
-output_dict = {
-    'anat': {
-        'reorient': '../data/dataset_spreng/anat/proc1_reorient',
-        'bet': '../data/dataset_spreng/anat/proc2_bet',
-        'fast': '../data/dataset_spreng/anat/proc3_fast',
-        'flirt': f'../data/dataset_spreng/anat/proc4_flirt',
-        'fnirt': '../data/dataset_spreng/anat/proc5_fnirt'
-    },
-    'func': {
-        'afni': '../data/dataset_spreng/func/proc1_afni',
-        'func2struct': '../data/dataset_spreng/func/proc2_func2struct',
-        'tedana': '../data/dataset_spreng/func/proc3_tedana',
-        'multiechomaps': '../data/dataset_spreng/func/proc_me/proc4_memaps',
-        'standard': '../data/dataset_spreng/func/proc_me/proc5_standard',
-        'smooth': '../data/dataset_spreng/func/proc_me/proc6_mask_smooth',
-        'bandpass': '../data/dataset_spreng/func/proc_me/proc7_bandpass'
-    }
- }
-
 
 def compute_me_maps(fp_echos, echo_times, mask, out_file):
     # compute t2* and S0 images from multiecho data
@@ -67,6 +47,29 @@ def compute_me_maps(fp_echos, echo_times, mask, out_file):
     write_map(s0_full_ts, mask, s0_out_file)
     return t2_out_file, s0_out_file
 
+
+def create_directories(dataset):
+    # directories for preprocessing
+    output_dict = {
+        'anat': {
+            'raw': f'data/dataset_{dataset}/anat/raw',
+            'reorient': f'data/dataset_{dataset}/anat/proc1_reorient',
+            'bet': f'data/dataset_{dataset}/anat/proc2_bet',
+            'fast': f'data/dataset_{dataset}/anat/proc3_fast',
+            'flirt': f'data/dataset_{dataset}/anat/proc4_flirt',
+            'fnirt': f'data/dataset_{dataset}/anat/proc5_fnirt'
+        },
+        'func': {
+            'afni': f'../data/dataset_{dataset}/func/proc1_afni',
+            'func2struct': f'../data/dataset_{dataset}/func/proc2_func2struct',
+            'tedana': f'../data/dataset_{dataset}/func/proc3_tedana',
+            'multiechomaps': f'../data/dataset_{dataset}/func/proc_me/proc4_memaps',
+            'standard': f'../data/dataset_{dataset}/func/proc_me/proc5_standard',
+            'smooth': f'../data/dataset_{dataset}/func/proc_me/proc6_mask_smooth',
+            'bandpass': f'../data/dataset_{dataset}/func/proc_me/proc7_bandpass'
+        }
+    }
+    return output_dict
 
 
 def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, 
@@ -176,9 +179,11 @@ if __name__ == '__main__':
     params['tr'] = params_json[dataset]['tr']
     params['mask'] = f"../{params_json[dataset]['mask']}"
     params['n_cores'] = 4
-    # load spreng subject list
+    # load subject list
     subj, scan= load_subject_list(
         dataset, f"../{params_json[dataset]['subject_list']}"
     )
+    # map directories for input/output files
+    output_dict = create_directories(dataset)
     # preprocess multiecho data
     preprocess_multiecho(subj, scan, params, output_dict)
