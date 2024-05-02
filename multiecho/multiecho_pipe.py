@@ -53,12 +53,12 @@ def create_directories(dataset):
     # directories for preprocessing
     output_dict = {
         'anat': {
-            'raw': f'data/dataset_{dataset}/anat/raw',
-            'reorient': f'data/dataset_{dataset}/anat/proc1_reorient',
-            'bet': f'data/dataset_{dataset}/anat/proc2_bet',
-            'fast': f'data/dataset_{dataset}/anat/proc3_fast',
-            'flirt': f'data/dataset_{dataset}/anat/proc4_flirt',
-            'fnirt': f'data/dataset_{dataset}/anat/proc5_fnirt'
+            'raw': f'../data/dataset_{dataset}/anat/raw',
+            'reorient': f'../data/dataset_{dataset}/anat/proc1_reorient',
+            'bet': f'../data/dataset_{dataset}/anat/proc2_bet',
+            'fast': f'../data/dataset_{dataset}/anat/proc3_fast',
+            'flirt': f'../data/dataset_{dataset}/anat/proc4_flirt',
+            'fnirt': f'../data/dataset_{dataset}/anat/proc5_fnirt'
         },
         'func': {
             'afni': f'../data/dataset_{dataset}/func/proc1_afni',
