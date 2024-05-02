@@ -59,50 +59,34 @@ def afni_proc(fp_echo, fp_func_base, echo_times,
               afni_base_dir, slice_timing, trim):
     # function-scoped import to avoid importing unless pipeline is called
     from nipype.interfaces import afni
+    # ensure slice timing param is passed
+    if slice_timing is None:
+        raise Exception('must have slicetiming correction'
+                        ' for the multiecho pipeline')
     n_echos = len(echo_times)
     # string format template to pass preprocessing parameters to 
     # afni_proc.py file
     with open('utils/afni_proc_template.txt') as f:
         afni_template = f.read()
-    blocks = []
-    # determine blocks to pass to afni_proc.py
-    if slice_timing:
-        blocks += ['tshift']
-        pb = '03' # needed for specify output BRIK path for echo
-        pb_comb = '04' # needed for specify output BRIK path for optcomb
-        # if string argument is given for slice_timing, pass as arg to afni_proc.py
-        if isinstance(slice_timing, str):
-            slicetime_afni = True
-            # load afni_proc.py script for slice timing params
-            with open('utils/afni_proc_template_st.txt') as f:
-                afni_template = f.read()
-            tpattern = f'-tpattern {slice_timing}'
-        else:
-            slicetime_afni = False
-    else:
-        pb = '02'
-        pb_comb = '03'
-        slicetime_afni = False
-    blocks += ['volreg', 'despike', 'combine']
+    # set blocks to pass to afni_proc.py
+    blocks = ['tshift', 'volreg', 'despike', 'combine']
     blocks = ' '.join(blocks)
-    # determine whether t
+    pb = '03' # needed for specify output BRIK path for echo
+    pb_comb = '04' # needed for specify output BRIK path for optcomb
+    # determine whether trim volumes
     if trim is None:
         trim = 0
+    # set slicetiming option -tpattern
+    tpattern = f'-tpattern {slice_timing}'
     # pass echo times as string with spaces
     echo_times = ' '.join([str(t) for t in echo_times])
     # set output dir for afni_proc.py
     afni_out_dir = f"{afni_base_dir}/{fp_func_base}"
     # format afni_proc string
-    if slicetime_afni:
-        afni_proc_str = afni_template.format(
-            fp_func_base, blocks, fp_echo, echo_times, trim, 
-            afni_out_dir, tpattern
-        )
-    else:
-        afni_proc_str = afni_template.format(
-            fp_func_base, blocks, fp_echo, echo_times, trim, 
-            afni_out_dir
-        )
+    afni_proc_str = afni_template.format(
+        fp_func_base, blocks, fp_echo, echo_times, trim, 
+        afni_out_dir, tpattern
+    )
     # execute afni_proc.py
     os.system(afni_proc_str)
     # don't know how to write .proc file to appropriate directory
@@ -836,7 +820,7 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, physio_skip,
             'mask': params_dataset['mask'], # path to binary brain mask
             'robustfov': True, # whether to crop anatomical image
             'bet_frac': 0.5, # bet fractional intensity threshold (0 - 1): higher -> more aggresive
-            'slicetime': 'alt+z2', # path to slice timing file, boolean (assume header contains info), or arg string
+            'slicetime': 'alt+z2', # path to slice timing file or arg string (must be supplied for multiecho)
             'smooth': True, # whether to smooth (5mm fwhm) functional scan
             'trim': 7, # number of volumes to trim from begin of functional scan (if negative, trim from end)
             'n_cores': n_cores, 
@@ -923,7 +907,7 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, physio_skip,
             'mask': params_dataset['mask'],
             'robustfov': False,
             'bet_frac': 0.25,
-            'slicetime': True, 
+            'slicetime': f"@{os.path.abspath('data/dataset_spreng/slicetiming_spreng.txt')}",
             'smooth': True,
             'trim': 4,
             'n_cores': n_cores,

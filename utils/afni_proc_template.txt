@@ -5,4 +5,5 @@ afni_proc.py                                                             \
             -echo_times             {3}                                  \
             -tcat_remove_first_trs  {4}                                  \
             -out_dir                {5}                                  \
+            -tshift_opts_ts         {6}                                  \
 
