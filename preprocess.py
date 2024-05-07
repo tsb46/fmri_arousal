@@ -55,55 +55,6 @@ natview_eeg_chan = ['P3', 'P4', 'P7', 'P8', 'Pz', 'POz',
                     'P1', 'P2', 'PO3', 'PO4', 'P5', 'P6',
                     'PO7', 'PO8', 'O1', 'O2', 'Oz']
 
-def afni_proc(fp_echo, fp_func_base, echo_times, 
-              afni_base_dir, slice_timing, trim):
-    # function-scoped import to avoid importing unless pipeline is called
-    from nipype.interfaces import afni
-    # ensure slice timing param is passed
-    if slice_timing is None:
-        raise Exception('must have slicetiming correction'
-                        ' for the multiecho pipeline')
-    n_echos = len(echo_times)
-    # string format template to pass preprocessing parameters to 
-    # afni_proc.py file
-    with open('utils/afni_proc_template.txt') as f:
-        afni_template = f.read()
-    # set blocks to pass to afni_proc.py
-    blocks = ['tshift', 'volreg', 'despike', 'combine']
-    blocks = ' '.join(blocks)
-    pb = '03' # needed for specify output BRIK path for echo
-    pb_comb = '04' # needed for specify output BRIK path for optcomb
-    # determine whether trim volumes
-    if trim is None:
-        trim = 0
-    # set slicetiming option -tpattern
-    tpattern = f'-tpattern {slice_timing}'
-    # pass echo times as string with spaces
-    echo_times = ' '.join([str(t) for t in echo_times])
-    # set output dir for afni_proc.py
-    afni_out_dir = f"{afni_base_dir}/{fp_func_base}"
-    # format afni_proc string
-    afni_proc_str = afni_template.format(
-        fp_func_base, blocks, fp_echo, echo_times, trim, 
-        afni_out_dir, tpattern
-    )
-    # execute afni_proc.py
-    os.system(afni_proc_str)
-    # don't know how to write .proc file to appropriate directory
-    # hack to move it to proc1_afni directory
-    shutil.move(f'proc.{fp_func_base}', f'{afni_base_dir}/proc.{fp_func_base}')
-    # run proc script
-    os.system(f'tcsh -xef {afni_base_dir}/proc.{fp_func_base}')
-    # assume echos are indexed from 1 to N
-    afni_echo_fps = [
-        f'{afni_out_dir}/pb{pb}.{fp_func_base}.r01.e0{i+1}.despike+orig.BRIK'
-        for i in range(n_echos)
-    ]
-    afni_combine_fp = \
-    f'{afni_out_dir}/pb{pb_comb}.{fp_func_base}.r01.combine+orig.BRIK'
-    
-    return afni_echo_fps, afni_combine_fp
-    
 
 def anat_proc(fp, subj, output_dict, crop, bet_frac):
     # anatomical preprocessing pipeline
@@ -162,12 +113,6 @@ def bandpass_filter(fp, fp_out, tr, mask, cut_low=0.01, cut_high=0.1):
     img_out.to_filename(fp_out)
 
 
-def convert_afni_to_nii(fp_in, fp_out):
-    from nipype.interfaces import afni
-    a2n = afni.AFNItoNIFTI(in_file=fp_in, out_file=fp_out)
-    a2n.run()
-
-
 def create_directories(dataset, p_type, eeg, slice_time=None, trim=None):
     # create directories for preprocessing
     if (p_type == 'full') | (p_type == 'multiecho'):
@@ -195,9 +140,11 @@ def create_directories(dataset, p_type, eeg, slice_time=None, trim=None):
         elif p_type == 'multiecho':
             output_dict['func'] = {
                 'raw': f'data/dataset_{dataset}/func/raw',
-                'afni': f'data/dataset_{dataset}/func/proc1_afni',
-                'func2struct': f'data/dataset_{dataset}/func/proc2_func2struct',
-                'tedana': f'data/dataset_{dataset}/func/proc3_tedana',
+                'trim': f'data/dataset_{dataset}/func/procA_trim',
+                'slicetime': f'data/dataset_{dataset}/func/procB_slicetime',
+                'mcflirt': f'data/dataset_{dataset}/func/proc1_mcflirt',
+                'tedana': f'data/dataset_{dataset}/func/proc2_tedana',
+                'func2struct': f'data/dataset_{dataset}/func/proc3_func2struct',
                 'standard': f'data/dataset_{dataset}/func/proc4_standard',
                 'smooth': f'data/dataset_{dataset}/func/proc5_mask_smooth',
                 'bandpass': f'data/dataset_{dataset}/func/proc6_bandpass'
@@ -249,12 +196,11 @@ def eeglab_natview_preprocess(fp, output_dir):
 
 def epi_mask(fp_in, fp_mask):
     # create mask from EPI for tedana pipeline
-    from nipype.interfaces import afni
     from nilearn.masking import compute_epi_mask
     nii = nb.load(fp_in)
     nii_mask = compute_epi_mask(nii, lower_cutoff=0.01, upper_cutoff=0.6, 
                                 opening=True)
-    nb.save(nii_mask, fp_mask)    
+    nb.save(nii_mask, fp_mask)
 
 
 def extract_physio(ts, phys_label, sf):
@@ -345,46 +291,69 @@ def func_me_proc(fp_me, echo_times, subj, scan, anat_out_dict, output_dict,
     # get combined functional name
     fp_func = fp_me['func'].format(subj, scan)
     fp_func_base = get_fp_base(fp_func)
-    # get functional names of echos
-    if scan is None:
-        fp_echo = fp_me['echo'].format(subj, '*')
-    else:
-        fp_echo = fp_me['echo'].format(subj, scan, '*')
+    # get functional names of echos (assume index starts at 1)
+    fp_echo = []
+    for i in range(len(echo_times)):
+        if scan is None:
+            fp = fp_me['echo'].format(subj, i+1)
+        else:
+            fp = fp_me['echo'].format(subj, scan, i+1)
+        fp_echo.append(fp)
     # get anatomical filepaths
     anat_out = anat_out_dict[subj]
-    # get starting raw functional scan (all echos)
-    fp_in = f"{output_dict['func']['raw']}/{fp_echo}"
-    afni_base_dir = f"{output_dict['func']['afni']}"
-    # run afni_proc.py preprocessing (slicetime, align)
-    fps_afni, fp_optcomb = afni_proc(
-        fp_in, fp_func_base, echo_times, afni_base_dir, slice_timing, trim
-    )
-    # epi coregistration
-    # first, convert combopt .BRIK to nifti
-    fp_optcomb_nii = f'{get_fp_base(fp_optcomb)}.nii.gz'
-    convert_afni_to_nii(fp_optcomb, fp_optcomb_nii)
-    # # second, select first volume for coregistration
-    fp_firstvol = f"{output_dict['func']['func2struct']}/{fp_func_base}_firstvol.nii.gz"
-    first_vol(fp_optcomb_nii, fp_firstvol)
+    # get full path to raw functional files
+    fp_in_dir = output_dict['func']['raw']
+    # if specified, trim first N volumes
+    if trim is not None:
+        for fp in fp_echo:
+            fp_in = f"{fp_in_dir}/{fp}"
+            fp_trim = f"{output_dict['func']['trim']}/{fp}"
+            trim_vol(fp_in, fp_trim, trim)
+        fp_in_dir = output_dict['func']['trim']
+    # if specified, slicetime correct
+    if slice_timing is not None:
+        for fp in fp_echo:
+            fp_in = f"{fp_in_dir}/{fp}"
+            fp_slicetime = f"{output_dict['func']['slicetime']}/{fp}"
+            slicetime(fp_in, fp_slicetime, slice_timing, tr)
+        fp_in_dir = output_dict['func']['slicetime']
+    # apply mcflirt motion correction on first echo
+    fp_in = f'{fp_in_dir}/{fp_echo[0]}'
+    fp_mcflirt = f"{output_dict['func']['mcflirt']}/{fp_echo[0]}"
+    fp_echo1_mean = mcflirt(fp_in, fp_mcflirt, save_mats=True)
+    # apply mcflirt transform to rest of echos
+    for fp in fp_echo[1:]:
+        fp_in = f"{fp_in_dir}/{fp}"
+        fp_mcflirt = f"{output_dict['func']['mcflirt']}/{fp}"
+        fp_mcflirt_mat = f"{output_dict['func']['mcflirt']}/{fp_echo[0]}.mat"
+        # applyxfm4d is not available in nipype, run from terminal
+        os.system(
+            f'applyxfm4D {fp_in} {fp_echo1_mean} {fp_mcflirt} {fp_mcflirt_mat} -fourdigit'
+        )
+    # epi coregistration on mean func
     fp_coreg = f"{output_dict['func']['func2struct']}/{fp_func}"
     fp_func2struct = coregister(
-        fp_firstvol, anat_out['reorient'], anat_out['bet'], anat_out['wm'], fp_coreg
+        fp_echo1_mean, anat_out['reorient'], anat_out['bet'], anat_out['wm'], fp_coreg
     )
-    # # tedana denoising
-    # # create directory for tedana output
+    fp_func2struct_mat = f"{get_fp_base(fp_func2struct)}_init.mat"
+    # tedana denoising
+    # create directory for tedana output
     tedana_out_dir = f"{output_dict['func']['tedana']}/{fp_func_base}"
     os.makedirs(tedana_out_dir, exist_ok=True)
-    # put mask from BET and into to functional space
-    fp_coreg_mat = f"{get_fp_base(fp_func2struct)}_invert.mat"
-    invert_transform(fp_func2struct, fp_coreg_mat)
+    # put mask from BET into to functional space
+    fp_coreg_mat = f"{get_fp_base(fp_func2struct)}_init_invert.mat"
+    invert_transform(fp_func2struct_mat, fp_coreg_mat)
     fp_bet_base = f"{os.path.basename(get_fp_base(anat_out['bet']))}_mask"
     fp_bet_mask = f"{output_dict['anat']['bet']}/{fp_bet_base}.nii.gz"
     fp_bet_func = f"{tedana_out_dir}/{fp_bet_base}_func.nii.gz"
-    apply_transform_mask(fp_bet_mask, fp_bet_func, fp_firstvol, fp_coreg_mat)    
+    apply_transform_mask(fp_bet_mask, fp_bet_func, fp_echo1_mean, fp_coreg_mat)    
     # execute tedana pipeline
-    tedana_denoise(fps_afni, echo_times, fp_bet_func, tedana_out_dir, fp_func_base)
+    fps_denoise = []
+    for fp in fp_echo:
+        fps_denoise.append(f"{output_dict['func']['mcflirt']}/{fp}")
+    tedana_denoise(fps_denoise, echo_times, fp_bet_func, tedana_out_dir, fp_func_base)
     # define path to denoised output
-    fp_tedana = f"{tedana_out_dir}/{fp_func_base}_desc-optcom_bold.nii.gz"
+    fp_tedana = f"{tedana_out_dir}/{fp_func_base}_desc-optcomDenoised_bold.nii.gz"
     # apply warp to get functional to MNI
     fp_warp = f"{output_dict['func']['standard']}/{fp_func}"
     warp_func(fp_tedana, fp_func2struct, anat_out['fnirt_coef'], fp_warp, mask)
@@ -820,7 +789,7 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, physio_skip,
             'mask': params_dataset['mask'], # path to binary brain mask
             'robustfov': True, # whether to crop anatomical image
             'bet_frac': 0.5, # bet fractional intensity threshold (0 - 1): higher -> more aggresive
-            'slicetime': 'alt+z2', # path to slice timing file or arg string (must be supplied for multiecho)
+            'slicetime': 'data/dataset_chang/slicetiming_chang.txt', # path to slice timing file or boolean (read from header)
             'smooth': True, # whether to smooth (5mm fwhm) functional scan
             'trim': 7, # number of volumes to trim from begin of functional scan (if negative, trim from end)
             'n_cores': n_cores, 
@@ -1045,7 +1014,8 @@ def tedana_denoise(fps_in, echo_times, mask, out_dir, out_prefix,
     from tedana.workflows import tedana_workflow
     # run tedana workflow
     tedana_workflow(data=fps_in, tes=echo_times, mask=mask, fittype=fittype, 
-                    prefix=out_prefix, out_dir=out_dir, overwrite=True)
+                    prefix=out_prefix, out_dir=out_dir, overwrite=True,
+                    tedpca='kundu-stabilize')
 
 
 if __name__ == '__main__':

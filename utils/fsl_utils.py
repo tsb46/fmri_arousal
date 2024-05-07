@@ -33,6 +33,7 @@ def apply_transform_mask(fp, fp_out, ref, mat):
     # move to results directory
     os.remove(applyxfm_res.outputs.out_matrix_file)
 
+
 def bet(fp, fp_out, frac=None):
     # BET - Skullstrip anatomical Image
     bet_anat = fsl.BET(frac=frac, robust=True, mask=True)
@@ -128,13 +129,14 @@ def invert_transform(in_mat, out_mat):
     invertxfm.inputs.out_file = out_mat
     invertxfm.run()
 
-def mcflirt(fp, fp_out):
+def mcflirt(fp, fp_out, save_mats=False):
     # McFLIRT Motion Correction
     fp_out_base = get_fp_base(fp_out)
     func_file_meanvol = f'{fp_out_base}_mean.nii.gz'
     mcflirt = fsl.MCFLIRT(mean_vol=True, save_plots=True)
     mcflirt.inputs.in_file = fp
     mcflirt.inputs.out_file = fp_out
+    mcflirt.inputs.save_mats = save_mats
     mcflirt_res = mcflirt.run()
     # weird renaming of mean vol, rename
     os.rename(mcflirt_res.outputs.mean_img, func_file_meanvol)
