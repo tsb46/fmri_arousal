@@ -168,6 +168,11 @@ if __name__ == '__main__':
                         choices=['chang', 'chang_bh', 'chang_cue', 'spreng'], 
                         required=True,
                         type=str)
+    parser.add_argument('-n', '--n_cores',
+                        help='number of cores to use for parallel processing',
+                        default = 1,
+                        required=False,
+                        type=int)
     # load analysis_params.json
     params_json = json.load(open(params_fp, 'rb'))
     # parse arguments
@@ -179,7 +184,7 @@ if __name__ == '__main__':
     params['echo_times'] = params_json[dataset]['echotimes']
     params['tr'] = params_json[dataset]['tr']
     params['mask'] = f"../{params_json[dataset]['mask']}"
-    params['n_cores'] = 4
+    params['n_cores'] = args_dict['n_cores']
     # load subject list
     subj, scan= load_subject_list(
         dataset, f"../{params_json[dataset]['subject_list']}"
