@@ -61,9 +61,9 @@ def create_directories(dataset):
             'fnirt': f'../data/dataset_{dataset}/anat/proc5_fnirt'
         },
         'func': {
-            'mcflirt': f'data/dataset_{dataset}/func/proc1_mcflirt',
-            'tedana': f'data/dataset_{dataset}/func/proc2_tedana',
-            'func2struct': f'data/dataset_{dataset}/func/proc3_func2struct',
+            'mcflirt': f'../data/dataset_{dataset}/func/proc1_mcflirt',
+            'tedana': f'../data/dataset_{dataset}/func/proc2_tedana',
+            'func2struct': f'../data/dataset_{dataset}/func/proc3_func2struct',
             'multiechomaps': f'../data/dataset_{dataset}/func/proc_me/proc4_memaps',
             'standard': f'../data/dataset_{dataset}/func/proc_me/proc5_standard',
             'smooth': f'../data/dataset_{dataset}/func/proc_me/proc6_mask_smooth',
