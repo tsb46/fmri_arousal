@@ -113,13 +113,13 @@ def preprocess_multiecho(subj, scan, params, output_dict):
      repeat(anat_out_dict), repeat(output_dict), 
      repeat(params['tr']), repeat(params['mask']),
     )
-    # pool.starmap(func_me_proc, func_iter)
-    func_me_proc(
-        params['func'],
-        subj[0], scan[0], anat_out_dict,
-        output_dict, params['tr'], 
-        params['mask'],
-    )
+    pool.starmap(func_me_proc, func_iter)
+    # func_me_proc(
+    #     params['func'],
+    #     subj[0], scan[0], anat_out_dict,
+    #     output_dict, params['tr'], 
+    #     params['mask'],
+    # )
 
 def select_components(metrics_df, metric, k_elbow, r_elbow):
     # select components based on kappa and rho elbow
