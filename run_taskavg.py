@@ -109,13 +109,14 @@ def write_results(dataset, func_avg, params, out_dir):
     write_nifti(func_avg, analysis_str, params)
 
 
-def run_task_avg(dataset, out_dir=None):
+def run_task_avg(dataset, m_param, out_dir=None):
     # get dataset parameters
     params_d = data_params[dataset] 
     # load subject list 
     subject, scan = load_subject_list(dataset, params_d['subject_list'])
     # Load data
-    func_data, _, params = load_data(dataset, None, group_method='list')
+    func_data, _, params = load_data(dataset, None, group_method='list', 
+                                     multiecho=m_param)
     # create task block indices
     event_blocks = construct_task_blocks(dataset, subject, scan, params_d)
     # load compliance for chang_bh
@@ -153,7 +154,13 @@ if __name__ == '__main__':
                         choices=['chang_bh', 'chang_cue'], 
                         required=True,
                         type=str)
+    parser.add_argument('-m', '--m_param',
+                        help='For multiecho data, specify multiecho parameter - t2 or s0',
+                        choices=['t2', 's0'], 
+                        required=False,
+                        default=None,
+                        type=str)
 
     args_dict = vars(parser.parse_args())
-    run_task_avg(args_dict['dataset'])
+    run_task_avg(args_dict['dataset'], args_dict['m_param'])
 
