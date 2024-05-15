@@ -89,8 +89,7 @@ def write_results(dataset, pca_output, pca_type, params,
     pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
 
 
-def run_pca(dataset, n_comps, pca_type, rotate, recon, 
-            recon_method, recon_multiecho, out_dir=None):
+def run_pca(dataset, n_comps, pca_type, rotate, out_dir=None):
     # load dataset
     func_data, _, params = load_data(dataset, physio=None) 
     # if pca_type is complex, compute hilbert transform
@@ -104,25 +103,13 @@ def run_pca(dataset, n_comps, pca_type, rotate, recon,
     if rotate is not None:
         pca_output = rotation(pca_output, func_data, rotate)
 
-    # if cpca, and recon=True, create reconstructed time courses of complex PC
-    if recon & (pca_type == 'complex'):
-        del func_data # free up memory
-        if recon_multiecho is not None:
-            data, _, _ = load_data(dataset, physio=None, 
-                                   multiecho=recon_multiecho) 
-        else:
-            data = None
-        n_recon = 1 # only reconstruct first component
-        cpca_recon(dataset, pca_output, n_recon, rotate, recon_method, 
-                   params, data=data, out_dir=out_dir, n_bins=30)
-
     # write out results
     write_results(dataset, pca_output, pca_type, params, 
                   rotate, out_dir)
 
 
 if __name__ == '__main__':
-    """Run main analysis"""
+    """PCA/CPCA Modeling"""
     parser = argparse.ArgumentParser(description='Run PCA or CPCA analysis')
     parser.add_argument('-d', '--dataset',
                         help='<Required> Dataset to run analysis on',
@@ -147,30 +134,6 @@ if __name__ == '__main__':
                         required=False,
                         choices=['varimax', 'promax'],
                         type=str)
-    parser.add_argument('-recon', '--recon',
-                        help='Whether to reconstruct time courses from complex PCA',
-                        action='store_true',
-                        required=False)
-    parser.add_argument('-recon_m', '--recon_method',
-                        help='Reconstruction method - 1) averaging of BOLD signals '
-                        'projected onto component (proj), 2) weighted averaging of '
-                        'non-projected BOLD signals based on amplitude of PC time '
-                        'course',
-                        default='proj',
-                        choices=['proj', 'weighted'],
-                        required=False)
-    parser.add_argument('-recon_me', '--recon_multiecho',
-                        help='Reconstruct time courses of CPCA with multiecho effects '
-                        ' - t2 or s0. Reconstruction method (recon_m) must be weighted',
-                        default=None,
-                        choices=['t2', 's0'],
-                        required=False)
     args_dict = vars(parser.parse_args())
-    if (args_dict['recon_method'] == 'proj') & \
-    (args_dict['recon_multiecho'] is not None):
-        raise Exception('Reconstructed method must be "weighted" if reconstruction is '
-                        'performed on multiecho effects - s0 or t2')
     run_pca(args_dict['dataset'], args_dict['n_comps'], 
-            args_dict['pca_type'], args_dict['rotate'], 
-            args_dict['recon'], args_dict['recon_method'],
-            args_dict['recon_multiecho'])
+            args_dict['pca_type'], args_dict['rotate'])
