@@ -76,8 +76,8 @@ if __name__ == '__main__':
                         required=False,
                         type=int)
     parser.add_argument('-m', '--m_param',
-                        help='For multiecho data, specify multiecho parameter - t2 or s0',
-                        choices=['t2', 's0'], 
+                        help='For multiecho data, specify multiecho parameter - kappa or rho',
+                        choices=['kappa', 'rho'], 
                         required=False,
                         default=None,
                         type=str)
