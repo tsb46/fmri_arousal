@@ -789,7 +789,7 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, physio_skip,
             'mask': params_dataset['mask'], # path to binary brain mask
             'robustfov': True, # whether to crop anatomical image
             'bet_frac': 0.5, # bet fractional intensity threshold (0 - 1): higher -> more aggresive
-            'slicetime': 'data/dataset_chang/slicetiming_chang.txt', # path to slice timing file or boolean (read from header)
+            'slicetime': 'data/dataset_chang/sliceorder_chang.txt', # path to slice order file or boolean (read from header)
             'smooth': True, # whether to smooth (5mm fwhm) functional scan
             'trim': 7, # number of volumes to trim from begin of functional scan (if negative, trim from end)
             'n_cores': n_cores, 
@@ -825,7 +825,7 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, physio_skip,
             'mask': params_dataset['mask'],
             'robustfov': True,
             'bet_frac': 0.25,
-            'slicetime': 'data/dataset_natview/slicetiming_natview.txt',
+            'slicetime': 'data/dataset_natview/sliceorder_natview.txt',
             'smooth': True,
             'trim': -2,
             'n_cores': n_cores,
@@ -876,7 +876,7 @@ def preprocess(dataset, n_cores, anat_skip, func_skip, physio_skip,
             'mask': params_dataset['mask'],
             'robustfov': False,
             'bet_frac': 0.25,
-            'slicetime': f'data/dataset_spreng/slicetiming_spreng.txt',
+            'slicetime': f'data/dataset_spreng/sliceorder_spreng.txt',
             'smooth': True,
             'trim': 4,
             'n_cores': n_cores,

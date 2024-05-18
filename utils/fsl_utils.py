@@ -175,7 +175,7 @@ def reorient(fp, fp_out):
 
 def slicetime(fp, fp_out, st_fp, tr):
     # # Slice time correction
-    slicetimer = fsl.SliceTimer(custom_timings=st_fp, 
+    slicetimer = fsl.SliceTimer(custom_order=st_fp, 
                                 time_repetition=tr) 
     slicetimer.inputs.in_file = fp
     slicetimer.inputs.out_file = fp_out
