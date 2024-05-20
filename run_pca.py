@@ -6,7 +6,6 @@ import pickle
 from numpy.linalg import pinv
 from scipy.signal import hilbert
 from scipy.stats import zscore
-from utils.cpca_reconstruction import cpca_recon
 from utils.load_write import load_data, write_nifti
 from utils.rotation import varimax, promax
 
