@@ -1,5 +1,10 @@
+import neurokit2 as nk
+import nibabel as nb
 import numpy as np
 import scipy.signal as signal
+
+from sklearn.linear_model import LinearRegression
+from load_write import convert_2d, convert_4d
 
 def retroicor_hr(slice_order, TR, cardiac_trig_times, nframes):
     """
@@ -57,6 +62,11 @@ def retroicor_hr(slice_order, TR, cardiac_trig_times, nframes):
         REGRESSORS[:,:,jj] = quaddetrend_cols(REGRESSORS_RET[:,:,jj])
 
     return PHASES, REGRESSORS
+
+
+def retroicor_hr_reg(fp, fp_out, slice_order_fp, physio_fp, tr, mask):
+    pass
+
 
 
 def quaddetrend_cols(Y):
