@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 from scipy.interpolate import PchipInterpolator
 
 
-def deconv_gp(x, Y, TR, tseg, ntaps, k, dt_rs, interp='pchip'):
+def deconv_gp(x, Y, TR, tseg, ntaps, k, dt_rs, ll=4, sigf=1, interp='pchip'):
     """
     Modified from MATLAB implementation:
     for deconvolution of impulse response functions using Gaussian Process priors.
@@ -13,6 +13,11 @@ def deconv_gp(x, Y, TR, tseg, ntaps, k, dt_rs, interp='pchip'):
     Chang et al., Neuroimage 44(3), 857-869
     
     this version 20 Apr 2019 - catie
+
+    Hyperparameters of GPP Regression:
+    ll = 4
+    sigf = 1
+
     """
     # time axis
     tax_h = np.arange(-k, ntaps - k) * TR
@@ -42,8 +47,6 @@ def deconv_gp(x, Y, TR, tseg, ntaps, k, dt_rs, interp='pchip'):
 
     # build cov matrxs
     # hyperparameters (fixed here, but may also be estimated from the data)
-    ll = 4
-    sigf = 1
     sigv = np.std(yd)  # will be fixed for all voxels
     nu = sigf ** 2
     lsq = ll ** 2
